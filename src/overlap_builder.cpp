@@ -6,8 +6,6 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <log4cxx/logger.h>
-#include <log4cxx/basicconfigurator.h>
-#include <log4cxx/propertyconfigurator.h>
 
 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("nanoARCS.overlap"));
 
@@ -42,7 +40,9 @@ bool OverlapBuilder::build(const std::string& input, double minScore, const std:
             if(trim == 1) {
                 ret.trim();
             }
-            ret.print(overlapOutstream);
+            if(ret.score > minScore) {
+                ret.print(overlapOutstream, false);
+            }
         }
     }
     return true;

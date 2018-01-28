@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
         Properties cmd;
         const std::string& optstring = runner->options();
         int opt = -1;
-        while(getopt(argc - 1, argv + 1, optstring.c_str()) != -1) {
+        while((opt = getopt(argc - 1, argv + 1, optstring.c_str())) != -1) {
             std::string key = runner->transform((char)opt);
             if(optarg == NULL) {
                 cmd.put(key, NULL);
@@ -52,8 +52,8 @@ int main(int argc, char* argv[]) {
             log4cxx::BasicConfigurator::configure();
         }
         //load ini options
-        if(cmd.find("s") != cmd.not_found()) {
-            const std::string config_file = cmd.get< std::string >("s");
+        if(cmd.find("i") != cmd.not_found()) {
+            const std::string config_file = cmd.get< std::string >("i");
             try {
                 boost::property_tree::read_ini(config_file, options);
             } catch (const boost::property_tree::ini_parser_error& e) {

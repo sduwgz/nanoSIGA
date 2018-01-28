@@ -1,5 +1,5 @@
-#ifndef _overlap_builder_h
-#define _overlap_builder_h
+#ifndef overlap_builder_h_
+#define overlap_builder_h_
 
 #include "map.h"
 #include <string>
@@ -14,4 +14,4 @@ private:
     Map _maptool;
     std::string _prefix;
 };
-#endif //_overlap_builder_h
+#endif //overlap_builder_h_

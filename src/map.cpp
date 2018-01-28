@@ -136,6 +136,7 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
     for (int i = 1; i < rows; ++ i) {
         for (int j = 1; j < cols; ++ j) {
             Fragment moleFragment, geneFragment;
+            //one interval on mole is mapped with (1 -- K) intervals on gene
             moleFragment.push_back(d1[i - 1]);
             for (int k = j - 1; k >= j - MAX_MISS_MATCH && k >= 0; -- k) {
                 geneFragment.push_back(d2[k]);
@@ -146,6 +147,7 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
                 }
             }
 
+            //(1 -- K) intervals on mole is mapped with one interval on gene
             moleFragment.clear();
             geneFragment.clear();
             geneFragment.push_back(d2[j - 1]);
@@ -158,6 +160,7 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
                 }
             }
 
+            //two intervals on mole is mapped with two intervals on gene
             if (i > 2 && j > 2){
                 moleFragment.clear();
                 geneFragment.clear();
@@ -175,7 +178,6 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
         }
     }
     LOG4CXX_DEBUG(logger, boost::format("DP finished."));
-    LOG4CXX_DEBUG(logger, boost::format("Print the Matrix."));
     
     double maxScore = INIT_SCORE;
     int maxI = 0, maxJ = 0, startI = -1, startJ = -1;
@@ -209,9 +211,13 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
             f2.push_back(d2[j]);
         } 
         trackI = nextI, trackJ = nextJ;
+        reverse(f1.begin(), f1.end());
+        reverse(f2.begin(), f2.end());
         alignedMole1.push_back(f1);
         alignedMole2.push_back(f2);
     }
+    reverse(alignedMole1.begin(), alignedMole1.end());
+    reverse(alignedMole2.begin(), alignedMole2.end());
     LOG4CXX_DEBUG(logger, boost::format("Track finished."));
     int len1 = maxI - trackI;
     int len2 = maxJ - trackJ;

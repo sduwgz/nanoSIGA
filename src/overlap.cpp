@@ -1,5 +1,3 @@
-#ifndef overlapping_h_
-#define overlapping_h_
 #include "runner.h"
 #include "mole.h"
 #include "map.h"
@@ -20,7 +18,7 @@ class Overlapping : public Runner {
 public:
     virtual int run(const Properties options, const Arguments& arg);
 private:
-    Overlapping() : Runner("s:a:t:c:p", boost::assign::map_list_of('s',"minscore")('a', "parameter")('p', "prefix")('t', "threads")) {
+    Overlapping() : Runner("m:p:o:t:", boost::assign::map_list_of('m',"minscore")('p', "parameter")('o', "prefix")('t', "threads")) {
         RunnerManager::instance()->install("overlap", this);
     }
     int checkOptions(const Properties options, const Arguments& args) const {
@@ -38,8 +36,8 @@ private:
                 "      -h, --help                       display this help and exit\n"
                 "\n"
                 "      -t, --threads=NUM                use NUM threads to construct the index (default: 1)\n"
-                "      -s, --min-score=f                minimum aligment score required between two reads (default: 45)\n"
-                "      -p, --prefix=PREFIX              write index to file using PREFIX instead of prefix of READSFILE\n"
+                "      -m, --min-score=f                minimum aligment score required between two reads (default: 45)\n"
+                "      -o, --prefix=PREFIX              write index to file using PREFIX instead of prefix of READSFILE\n"
                 "\n"
                 ) << std::endl;
         return 256;
@@ -48,7 +46,6 @@ private:
     static Overlapping _runner;
 };
 Overlapping Overlapping::_runner;
-#endif //_overlap_h
 
 int Overlapping::run(const Properties options, const Arguments& arg) {
     int r = 0;
