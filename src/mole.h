@@ -4,6 +4,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <math.h>
 
 
 typedef std::vector<int> Fragment;
@@ -39,7 +41,12 @@ struct Alignment {
         return os;
     }
     void trim() {
-        
+        while(abs(std::accumulate(alignedMole1[0].begin(), alignedMole1[0].end(), 0) - std::accumulate(alignedMole2[0].begin(), alignedMole2[0].end(), 0)) > 1500 || alignedMole1[0].size() > 1 || alignedMole2[0].size() > 1) {
+            mole1Start += alignedMole1[0].size();
+            mole2Start += alignedMole2[0].size();
+            alignedMole1 = std::vector<Fragment>(alignedMole1.begin() + 1, alignedMole1.end());
+            alignedMole2 = std::vector<Fragment>(alignedMole2.begin() + 1, alignedMole2.end());
+        }
     }
 };
 
