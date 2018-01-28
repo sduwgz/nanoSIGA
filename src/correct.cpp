@@ -44,10 +44,10 @@ private:
         return 256;
     }
 
-    static Overlapping _runner;
+    static Correcting _runner;
 };
 
-Overlapping Overlapping::_runner;
+Correcting Correcting::_runner;
 int Correcting::run(const Properties options, const Arguments& args) {
     int r = 0;
     if((r = checkOptions(options, arg)) == 1) {
