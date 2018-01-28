@@ -12,6 +12,9 @@ INCLUDE_DIRECTORIES(/usr/include/)
         ./src/overlap_builder.h
         ./src/overlap_builder.cpp
         ./src/overlap.cpp
+        ./src/cluster_builder.h
+        ./src/cluster_builder.cpp
+        ./src/cluster.cpp
         ./src/runner.h
        )
 
