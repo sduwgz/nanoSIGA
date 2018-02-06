@@ -40,7 +40,7 @@ struct Alignment {
         }
         return os;
     }
-    void trim() {
+    void trimHead() {
         while(abs(std::accumulate(alignedMole1[0].begin(), alignedMole1[0].end(), 0) - std::accumulate(alignedMole2[0].begin(), alignedMole2[0].end(), 0)) > 1500 || alignedMole1[0].size() > 1 || alignedMole2[0].size() > 1) {
             mole1Start += alignedMole1[0].size();
             mole2Start += alignedMole2[0].size();
@@ -48,12 +48,22 @@ struct Alignment {
             alignedMole2 = std::vector<Fragment>(alignedMole2.begin() + 1, alignedMole2.end());
         }
     }
+    void trimTail() {
+        while(abs(std::accumulate(alignedMole1.back().begin(), alignedMole1.back().end(), 0) - std::accumulate(alignedMole2.back().begin(), alignedMole2.back().end(), 0)) > 1500 || alignedMole1.back().size() > 1 || alignedMole2.back().size() > 1) {
+            mole1End += alignedMole1.back().size();
+            mole2End += alignedMole2.back().size();
+            alignedMole1.pop_back();
+            alignedMole2.pop_back();
+        }
+    }
 };
 
 class Mole {
 public:
     Mole() {} 
-    explicit Mole(std::string id) : _id(id) {
+    explicit Mole(std::string& id) : _id(id) {
+    }
+    Mole(std::string& id, std::vector<int>& dis) : _id(id), _distance(dis) {
     }
     virtual ~Mole() {}
     bool getDistance(); 
@@ -64,10 +74,16 @@ public:
     std::string getID() const {
        return _id;
     } 
+    void setID(const std::string& s) {
+       _id = s;
+    } 
+    void shear(const int startSite) {
+        _distance = std::vector<int>(_distance.begin() + startSite, _distance.end());
+    }
     friend class MoleReader;
 private:
     std::string _id;
-    std::vector<long> _position;
+    std::vector<long long> _position;
     std::vector<int> _distance;
 };
 

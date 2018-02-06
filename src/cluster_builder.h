@@ -12,14 +12,15 @@
 typedef std::string Vertex;
 typedef std::map<Vertex, std::set<Vertex>> Graph;
 typedef std::vector<std::set<Vertex>> Components;
+typedef std::map<std::string, double> edgeSet;
 
 class ClusterBuilder {
 public:
     ClusterBuilder(const std::string& prefix="default") : _prefix(prefix) {
     }
     bool build(const std::string& input, double minScore, int minCluster, const std::string& output) const;
-    void constructGraph(const std::string& input, double minScore, Graph& graph) const;
-    void bfsSearch(const Graph& graph, int minCluster, Components& coms) const;
+    void constructGraph(const std::string& input, double minScore, Graph& graph, edgeSet& edges) const;
+    void bfsSearch(const Graph& graph, edgeSet& edges, int minCluster, Components& coms) const;
 private:
     std::string _prefix;
 

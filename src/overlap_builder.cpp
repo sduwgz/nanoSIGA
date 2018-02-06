@@ -38,7 +38,8 @@ bool OverlapBuilder::build(const std::string& input, double minScore, const std:
         for(int j = i + 1; j < moleSet.size(); ++ j) {
             Alignment ret = _maptool.localDPscore(moleSet[i], moleSet[j]);
             if(trim == 1) {
-                ret.trim();
+                ret.trimHead();
+                //ret.trimTail();
             }
             if(ret.score > minScore) {
                 ret.print(overlapOutstream, false);

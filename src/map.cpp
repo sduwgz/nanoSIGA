@@ -211,8 +211,8 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
             f2.push_back(d2[j]);
         } 
         trackI = nextI, trackJ = nextJ;
-        reverse(f1.begin(), f1.end());
-        reverse(f2.begin(), f2.end());
+        //reverse(f1.begin(), f1.end());
+        //reverse(f2.begin(), f2.end());
         alignedMole1.push_back(f1);
         alignedMole2.push_back(f2);
     }

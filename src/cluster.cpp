@@ -18,7 +18,7 @@ class Clustering : public Runner {
 public:
     virtual int run(const Properties options, const Arguments& arg);
 private:
-    Clustering() : Runner("m:s:o:", boost::assign::map_list_of('m', "mincluster")('s', "minscore")('o', "output")) {
+    Clustering() : Runner("m:s:o:", boost::assign::map_list_of('m', "mincluster")('s', "minscore")('o', "prefix")) {
         RunnerManager::instance()->install("cluster", this);
     }
     int checkOptions(const Properties options, const Arguments& arg) {
@@ -60,7 +60,7 @@ int Clustering::run(const Properties options, const Arguments& arg) {
     }
     LOG4CXX_INFO(logger, boost::format("output file is: %s") % output);
     ClusterBuilder builder(output);
-    if(!builder.build(input, options.get< double >("mincluster", 2), options.get< double >("minscore", 23.0), output)) {
+    if(!builder.build(input, options.get< double >("minscore", 23.0), options.get< double >("mincluster", 2), output)) {
         LOG4CXX_ERROR(logger, boost::format("Failed to build overlap from %s MOLECULEs") % input);
         r = -1;
     }
