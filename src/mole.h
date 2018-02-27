@@ -77,6 +77,10 @@ public:
     void setID(const std::string& s) {
        _id = s;
     } 
+    int getInterval(const int index) const {
+        if(index > _distance.size()) return 0;
+        return _distance[index];
+    }
     void shear(const int startSite) {
         _distance = std::vector<int>(_distance.begin() + startSite, _distance.end());
     }
