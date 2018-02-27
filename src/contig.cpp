@@ -1,3 +1,4 @@
+#include "runner.h"
 #include "mole.h"
 #include "map.h"
 #include "contig_builder.h"
@@ -6,11 +7,12 @@
 #include <map>
 #include <string>
 #include <iostream>
-#include <ifstream>
+#include <fstream>
 
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/assign.hpp>
 
 #include <log4cxx/logger.h>
 
@@ -24,7 +26,7 @@ private:
         RunnerManager::instance()->install("contig", this);
     }
     int checkOptions(const Properties options, const Arguments& args) const {
-        if(options.find('h') != options.end() || args.size() == 0) {
+        if(options.find("h") != options.not_found() || args.size() == 0) {
             printHelps();
             return 1;
         }
@@ -48,7 +50,7 @@ private:
     static Contigging _runner;
 };
 Contigging Contigging::_runner;
-int Contigging::run(const Properites options, const Arguments& args) {
+int Contigging::run(const Properties options, const Arguments& args) {
     int r = 0;
     if((r = checkOptions(options, args)) == 1) {
         return r;
@@ -66,7 +68,7 @@ int Contigging::run(const Properites options, const Arguments& args) {
     }
     Map maptool(parameter_file);
     ContigBuilder builder(maptool, output);
-    if(!builder.build(input, options.get< double > ("minscore", 25.0), output, options.get< size_t> ("threads", 1))) {
+    if(!builder.build(input, output, options.get< double > ("minscore", 25.0), options.get< size_t> ("threads", 1))) {
         LOG4CXX_ERROR(logger, boost::format("Fail to build contig from %s corrected centers") % input);
         r = -1;
     }

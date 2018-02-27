@@ -7,23 +7,30 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 
-typedef std::string Vertex;
-typedef std::map<Vertex, std::set<Vertex>> Graph;
-typedef std::vector<std::set<Vertex>> Components;
+struct Vertex {
+    //moleId|startSite
+    std::string moleId;
+    int startSite;
+    Vertex(const std::string& mid, const int ssite) : moleId(mid), startSite(ssite) {}
+    bool operator < (const Vertex& v) const {
+        std::string sa = moleId + "|" + std::to_string(startSite);
+        std::string sv = v.moleId + "|" + std::to_string(v.startSite);
+        return sa < sv;
+    }
+};
+
 
 class ContigBuilder {
 public:
-    ContigBuilder(Map& maptool, const::string& prefix="default") : _maptool(maptool), _prefix(prefix) {
+    ContigBuilder(Map& maptool, std::string prefix="default") : _maptool(maptool), _prefix(prefix) {
     }
-    bool build(const std::string& input, const std::string& output, const double minScore, int threads=1) const;
-    void alignment(const std::vector<Mole>& moleSet, std::vector<Alignment>& alignmentSet);
-    void component(const std::vector<Alignment>& alignmentSet, Components& components) const;
-    void bfsSearch(const Graph& graph, edgeSet& edges, int minCluster, Components& coms) const;
+    void alignment(const std::vector<Mole>& moleSet, std::vector<Alignment>& alignments, double minScore) const;
+    bool build(const std::string& input, const std::string& output, double minScore, int threads=1) const;
     
 private:
     Map _maptool;
     std::string _prefix;
 };
 #endif //contig_builder_h_
-
