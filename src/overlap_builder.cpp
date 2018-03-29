@@ -4,10 +4,42 @@
 #include <boost/format.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/thread.hpp>
 
 #include <log4cxx/logger.h>
 
 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("nanoARCS.overlap"));
+
+void OverlapBuilder::start(const std::vector<Mole>* moleSetPtr, std::vector<Alignment>* alignmentsPtr, double minScore, int threads, int threadId) const {
+    const std::vector<Mole>& moleSet = *moleSetPtr;
+    std::vector<Alignment>& alignments = *alignmentsPtr;
+    for(int i = threadId; i < moleSet.size(); i += threads) {
+        for(int j = i + 1; j < moleSet.size(); ++ j) {
+            Alignment align = _maptool.localDPscore(moleSet[i], moleSet[j]);
+            //a hard threshold
+            if(align.score < minScore || align.score / align.alignedMole1.size() < (minScore / 10)) {
+                continue;
+            }
+            alignments.push_back(align);
+        }
+    }
+}
+void OverlapBuilder::alignment(const std::vector<Mole>& moleSet, std::vector<Alignment>& alignments, int threads, double minScore) const {
+    const std::vector<Mole>* moleSetPtr = &moleSet;
+    std::vector<std::vector<Alignment>> threadAlignments(threads, std::vector<Alignment>());
+    boost::thread_group group;
+    LOG4CXX_INFO(logger, boost::format("Alignment using %d threads.") % threads);
+    for(int i = 0; i < threads; ++ i) {
+        std::vector<Alignment>* alignmentsPtr = &threadAlignments[i];
+        group.create_thread(boost::bind(&OverlapBuilder::start, this, moleSetPtr, alignmentsPtr, minScore, threads, i));
+    }
+    group.join_all();
+    for(int i = 0; i < threads; ++ i) {
+        for(auto al : threadAlignments[i]) {
+            alignments.push_back(al);
+        }
+    }
+}
 
 bool OverlapBuilder::build(const std::string& input, double minScore, const std::string& output, size_t threads, int trim, int reverseLabel) const {
     std::vector<Mole> moleSet;
@@ -34,16 +66,17 @@ bool OverlapBuilder::build(const std::string& input, double minScore, const std:
         return false;
     }
     std::ofstream overlapOutstream(output.c_str());
-    for(int i = 0; i < moleSet.size(); ++ i) {
-        for(int j = i + 1; j < moleSet.size(); ++ j) {
-            Alignment ret = _maptool.localDPscore(moleSet[i], moleSet[j]);
-            if(trim == 1) {
-                ret.trimHead();
-                //ret.trimTail();
-            }
-            if(ret.score > minScore) {
-                ret.print(overlapOutstream, false);
-            }
+    std::vector<Alignment> alignments;
+    alignment(moleSet, alignments, threads, minScore);
+    //TODO
+    for(int i = 0; i < alignments.size(); ++ i) {
+        Alignment ret = alignments[i];
+        if(trim == 1) {
+            ret.trimHead();
+            //ret.trimTail();
+        }
+        if(ret.score > minScore) {
+            ret.print(overlapOutstream, false);
         }
     }
     return true;
