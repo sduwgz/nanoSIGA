@@ -1,0 +1,11 @@
+/data/
+/scripts/
+/CMakeFiles/
+cmake_install.cmake
+*.dot
+*.png
+*.txt
+log*
+nanoARCS
+Makefile
+tags
