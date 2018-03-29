@@ -35,7 +35,7 @@ private:
     int printHelps() const {
         std::cout << boost::format(
                 "nanoARCS contig [OPTION] ... READSFILE\n"
-                "Compute pairwise overlap between all the molecule in READS\n"
+                "contig process, product assembly result as bnx format.\n"
                 "\n"
                 "      -h, --help                       display this help and exit\n"
                 "\n"
