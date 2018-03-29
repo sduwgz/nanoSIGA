@@ -50,8 +50,8 @@ struct Alignment {
     }
     void trimTail() {
         while(abs(std::accumulate(alignedMole1.back().begin(), alignedMole1.back().end(), 0) - std::accumulate(alignedMole2.back().begin(), alignedMole2.back().end(), 0)) > 1500 || alignedMole1.back().size() > 1 || alignedMole2.back().size() > 1) {
-            mole1End += alignedMole1.back().size();
-            mole2End += alignedMole2.back().size();
+            mole1End -= alignedMole1.back().size();
+            mole2End -= alignedMole2.back().size();
             alignedMole1.pop_back();
             alignedMole2.pop_back();
         }
