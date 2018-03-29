@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <boost/lexical_cast.hpp>
 
 struct Vertex {
     //moleId|startSite
@@ -15,9 +16,14 @@ struct Vertex {
     int startSite;
     Vertex(const std::string& mid, const int ssite) : moleId(mid), startSite(ssite) {}
     bool operator < (const Vertex& v) const {
-        std::string sa = moleId + "|" + std::to_string(startSite);
-        std::string sv = v.moleId + "|" + std::to_string(v.startSite);
-        return sa < sv;
+        int moleNum1 = boost::lexical_cast<int>(moleId);
+        int moleNum2 = boost::lexical_cast<int>(v.moleId);
+
+        return moleNum1 * 1000 + startSite < moleNum2 * 1000 + v.startSite;
+    }
+    std::string to_string() const {
+        std::string sv = "(" + moleId + ", " + std::to_string(startSite) + ")";
+        return sv;
     }
 };
 
@@ -26,8 +32,9 @@ class ContigBuilder {
 public:
     ContigBuilder(Map& maptool, std::string prefix="default") : _maptool(maptool), _prefix(prefix) {
     }
-    void alignment(const std::vector<Mole>& moleSet, std::vector<Alignment>& alignments, double minScore) const;
-    bool build(const std::string& input, const std::string& output, double minScore, int threads=1) const;
+    void start(const std::vector<Mole>* moleSetPtr, std::vector<Alignment>* alignmentsPtr, double minScore, int threads, int threadId) const;
+    void alignment(const std::vector<Mole>& moleSet, std::vector<Alignment>& alignments, int threadNum, double minScore) const;
+    bool build(const std::string& input, const std::string& output, double minScore, int threads=16) const;
     
 private:
     Map _maptool;
