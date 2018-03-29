@@ -29,7 +29,7 @@ void CorrectBuilder::alignment(const std::map<std::string, Mole>& moleSet, const
         centerMole.setID(newId);
         centerMole.shear(centerIndex.startSite);
         for(Index index : indexes) {
-            if(index == centerIndex) continue;
+            if(index.moleId == centerIndex.moleId) continue;
             LOG4CXX_DEBUG(logger, boost::format("Alignment between index %s and center %s.") % index.toString() % centerIndex.toString());
             if(moleSet.find(index.moleId) != moleSet.end()) {
                 it = moleSet.find(index.moleId);
@@ -39,7 +39,7 @@ void CorrectBuilder::alignment(const std::map<std::string, Mole>& moleSet, const
                 newId += std::to_string(index.startSite);
                 m2.setID(newId);
                 Alignment align = _maptool.localDPscore(centerMole, m2);
-                if(align.score < 15) {
+                if(align.score <= 15) {
                     continue;
                 }
                 alignments.push_back(align);
@@ -57,7 +57,7 @@ Center CorrectBuilder::vote(std::vector<Alignment>& alignments) const {
     }
     std::vector<std::vector<int>> clusterMole;
     std::vector<int> mole;
-    for(Alignment al : alignments) {
+    for(Alignment &al : alignments) {
         al.trimTail();
         if(al.alignedMole1.size() > mole.size()) {
             mole.clear();
@@ -129,7 +129,7 @@ Center CorrectBuilder::vote(std::vector<Alignment>& alignments) const {
         int voteSiteMount = -1;
         int tempMount = -1;
         for(int i = 1; i < 4; ++ i) {
-            if(tempMount < std::count(betweenSiteMount.begin(), betweenSiteMount.end(), i)) {
+            if(tempMount <= std::count(betweenSiteMount.begin(), betweenSiteMount.end(), i)) {
                 tempMount = std::count(betweenSiteMount.begin(), betweenSiteMount.end(), i); 
                 voteSiteMount = i;
              }
@@ -202,7 +202,7 @@ Center CorrectBuilder::vote(std::vector<Alignment>& alignments) const {
             s2 = std::accumulate(midSite2.begin(), midSite2.end(), 0.0) / midSite2.size();
             voteCenter.push_back(s2);
         }
-        int tempDis = std::accumulate(distance.begin(), distance.end(), 0.0) / distance.size();
+        int tempDis = std::accumulate(distance.begin(), distance.end(), 0.0) / distance.size() - s1 - s2;
         voteCenter.push_back(std::max(tempDis , 1));
         for(int i = 0; i < preSite.size(); ++ i) {
             if(nextSite[i] != -1) {
