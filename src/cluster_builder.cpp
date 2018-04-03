@@ -14,29 +14,7 @@
 
 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("nanoARCS.cluster"));
 
-bool ClusterBuilder::build(const std::string& input, double minScore, int minCluster, const std::string& output) const {
-    Graph graph;
-    edgeSet edges;
-    if(boost::filesystem::exists(input)) {
-        constructGraph(input, minScore, graph, edges);
-    } else {
-        LOG4CXX_WARN(logger, boost::format("%s not is not existed.") % input);
-        return false;
-    }
-    LOG4CXX_DEBUG(logger, boost::format("%d verteies in graph.") % graph.size());
-    Components comps;
-    bfsSearch(graph, edges, minCluster, comps);
-    LOG4CXX_DEBUG(logger, boost::format("%d cluster, minimal cluster size is %d.") % comps.size() % minCluster);
-    std::ofstream os(output.c_str());
-    for(auto comp : comps) {
-        for(auto it = comp.begin(); it != comp.end(); ++ it) {
-            os << *it << " ";
-        } 
-        os << '\n';
-    }
-    return true;
-}
-void ClusterBuilder::constructGraph(const std::string& input, double minScore, Graph& graph, edgeSet& edges) const {
+void constructGraph(const std::string& input, double minScore, Graph& graph, edgeSet& edges) {
     std::ifstream overlapIn(input.c_str());
     std::string line;
     while(std::getline(overlapIn, line)) {
@@ -52,7 +30,7 @@ void ClusterBuilder::constructGraph(const std::string& input, double minScore, G
         graph[v2].insert(v1);
     }
 }
-void ClusterBuilder::bfsSearch(const Graph& graph, edgeSet& edges, int minCluster, Components& comps) const {
+void bfsSearch(const Graph& graph, edgeSet& edges, int minCluster, Components& comps) {
     std::map<Vertex, int> colors;
     for(auto it : graph) {
         colors[it.first] = 0;
@@ -89,4 +67,27 @@ void ClusterBuilder::bfsSearch(const Graph& graph, edgeSet& edges, int minCluste
         LOG4CXX_DEBUG(logger, boost::format("#%d cluster, cluster size is %d.") % count % comp.size());
         comps.push_back(comp);
     }
+}
+
+bool ClusterBuilder::build(const std::string& input, double minScore, int minCluster, const std::string& output) const {
+    Graph graph;
+    edgeSet edges;
+    if(boost::filesystem::exists(input)) {
+        constructGraph(input, minScore, graph, edges);
+    } else {
+        LOG4CXX_WARN(logger, boost::format("%s not is not existed.") % input);
+        return false;
+    }
+    LOG4CXX_DEBUG(logger, boost::format("%d verteies in graph.") % graph.size());
+    Components comps;
+    bfsSearch(graph, edges, minCluster, comps);
+    LOG4CXX_DEBUG(logger, boost::format("%d cluster, minimal cluster size is %d.") % comps.size() % minCluster);
+    std::ofstream os(output.c_str());
+    for(auto comp : comps) {
+        for(auto it = comp.begin(); it != comp.end(); ++ it) {
+            os << *it << " ";
+        } 
+        os << '\n';
+    }
+    return true;
 }

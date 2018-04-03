@@ -19,8 +19,6 @@ public:
     ClusterBuilder(const std::string& prefix="default") : _prefix(prefix) {
     }
     bool build(const std::string& input, double minScore, int minCluster, const std::string& output) const;
-    void constructGraph(const std::string& input, double minScore, Graph& graph, edgeSet& edges) const;
-    void bfsSearch(const Graph& graph, edgeSet& edges, int minCluster, Components& coms) const;
 private:
     std::string _prefix;
 
