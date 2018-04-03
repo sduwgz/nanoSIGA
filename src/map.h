@@ -13,14 +13,26 @@ typedef std::map<std::string, double> ParametersList;
 
 class Map {
 public:
+    Map() {}
     Map(const std::string& parameter_file) : _parameterfile(parameter_file) {
         if(this->initParameters(parameter_file))
             this->initPunishScore();
     };
-    bool initParameters(const std::string& parameter_file);
-    void initPunishScore();
+
+    static Map* instance(const std::string& parameterFile) {
+        static Map maptool;
+        if(maptool.initParameters(parameterFile)) {
+            maptool.initPunishScore();
+        } else {
+        }
+        return &maptool;
+    }
+
     double wholeDPscore(const std::vector<int>& d1, const std::vector<int>& d2) const;
     Alignment localDPscore(const Mole& m1, const Mole& m2) const;
+private:
+    bool initParameters(const std::string& parameter_file);
+    void initPunishScore();
     double validScore(const Fragment& moleFragment, const Fragment& geneFragment) const;
 
     double probLaplace(int delta) const;
@@ -28,7 +40,6 @@ public:
     double probInsertion(int k) const;
     double probBackground(int delta) const;
 
-private:
     ParametersList _parameters;
     PunishScore _insertionScore;
     PunishScore _deletionScore;

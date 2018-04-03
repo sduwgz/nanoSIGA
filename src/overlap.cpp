@@ -64,9 +64,8 @@ int Overlapping::run(const Properties options, const Arguments& arg) {
         output = options.get< std::string >("prefix");
     }
     LOG4CXX_INFO(logger, boost::format("output file is: %s") % output);
-    Map maptool(parameter_file);
 
-    OverlapBuilder builder(maptool, output);
+    OverlapBuilder builder(parameter_file, output);
     if(!builder.build(input, options.get< double >("minscore", 15.0), output, options.get< size_t >("threads", 1))) {
         LOG4CXX_ERROR(logger, boost::format("Failed to build overlap from %s MOLECULEs") % input);
         r = -1;

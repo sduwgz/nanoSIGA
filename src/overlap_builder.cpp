@@ -10,12 +10,12 @@
 
 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("nanoARCS.overlap"));
 
-void OverlapBuilder::start(const std::vector<Mole>* moleSetPtr, std::vector<Alignment>* alignmentsPtr, double minScore, int threads, int threadId) const {
+void start(const Map* maptool, const std::vector<Mole>* moleSetPtr, std::vector<Alignment>* alignmentsPtr, double minScore, int threads, int threadId) {
     const std::vector<Mole>& moleSet = *moleSetPtr;
     std::vector<Alignment>& alignments = *alignmentsPtr;
     for(int i = threadId; i < moleSet.size(); i += threads) {
         for(int j = i + 1; j < moleSet.size(); ++ j) {
-            Alignment align = _maptool.localDPscore(moleSet[i], moleSet[j]);
+            Alignment align = maptool->localDPscore(moleSet[i], moleSet[j]);
             //a hard threshold
             if(align.score < minScore || align.score / align.alignedMole1.size() < (minScore / 10)) {
                 continue;
@@ -27,11 +27,12 @@ void OverlapBuilder::start(const std::vector<Mole>* moleSetPtr, std::vector<Alig
 void OverlapBuilder::alignment(const std::vector<Mole>& moleSet, std::vector<Alignment>& alignments, int threads, double minScore) const {
     const std::vector<Mole>* moleSetPtr = &moleSet;
     std::vector<std::vector<Alignment>> threadAlignments(threads, std::vector<Alignment>());
+    Map* maptool = Map::instance(_parameterFile);
     boost::thread_group group;
     LOG4CXX_INFO(logger, boost::format("Alignment using %d threads.") % threads);
     for(int i = 0; i < threads; ++ i) {
         std::vector<Alignment>* alignmentsPtr = &threadAlignments[i];
-        group.create_thread(boost::bind(&OverlapBuilder::start, this, moleSetPtr, alignmentsPtr, minScore, threads, i));
+        group.create_thread(boost::bind(start, maptool, moleSetPtr, alignmentsPtr, minScore, threads, i));
     }
     group.join_all();
     for(int i = 0; i < threads; ++ i) {

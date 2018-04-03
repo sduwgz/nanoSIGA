@@ -346,6 +346,10 @@ bool Map::initParameters(const std::string& parameter_file) {
     return true;
 }
 void Map::initPunishScore() {
+    _insertionScore.clear();
+    _deletionScore.clear();
+    _laplaceScore.clear();
+    _backgroundScore.clear();
     for (int i = 0; i < MAX_MISS_MATCH + 1; ++ i) {
         _insertionScore.push_back(probInsertion(i));
     }
