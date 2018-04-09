@@ -17,17 +17,18 @@ void start(const Map* maptool, const std::vector<Mole>* moleSetPtr, std::vector<
         for(int j = i + 1; j < moleSet.size(); ++ j) {
             Alignment align = maptool->localDPscore(moleSet[i], moleSet[j]);
             //a hard threshold
-            if(align.score < minScore || align.score / align.alignedMole1.size() < (minScore / 10)) {
+            //if(align.score < minScore || align.score / align.alignedMole1.size() < (minScore / 10)) {
+            if(align.score < minScore) {
                 continue;
             }
             alignments.push_back(align);
         }
     }
 }
-void OverlapBuilder::alignment(const std::vector<Mole>& moleSet, std::vector<Alignment>& alignments, int threads, double minScore) const {
+void alignment(const std::string parameterFile, const std::vector<Mole>& moleSet, std::vector<Alignment>& alignments, int threads, double minScore) {
     const std::vector<Mole>* moleSetPtr = &moleSet;
     std::vector<std::vector<Alignment>> threadAlignments(threads, std::vector<Alignment>());
-    Map* maptool = Map::instance(_parameterFile);
+    Map* maptool = Map::instance(parameterFile);
     boost::thread_group group;
     LOG4CXX_INFO(logger, boost::format("Alignment using %d threads.") % threads);
     for(int i = 0; i < threads; ++ i) {
@@ -68,7 +69,7 @@ bool OverlapBuilder::build(const std::string& input, double minScore, const std:
     }
     std::ofstream overlapOutstream(output.c_str());
     std::vector<Alignment> alignments;
-    alignment(moleSet, alignments, threads, minScore);
+    alignment(_parameterFile, moleSet, alignments, threads, minScore);
     //TODO
     for(int i = 0; i < alignments.size(); ++ i) {
         Alignment ret = alignments[i];
