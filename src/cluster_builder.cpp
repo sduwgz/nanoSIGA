@@ -22,8 +22,8 @@ void constructGraph(const std::string& input, double minScore, Graph& graph, edg
         boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
         double score = boost::lexical_cast<double>(data[2]);
         if(score < minScore) continue;
-        Vertex v1 = data[0] + "|" + data[3] + "|" + data[5];
-        Vertex v2 = data[1] + "|" + data[4] + "|" + data[6];
+        Vertex v1 = data[0] + "|" + data[3];
+        Vertex v2 = data[1] + "|" + data[4];
         edges[v1 + v2] = score;
         edges[v2 + v1] = score;
         graph[v1].insert(v2);
