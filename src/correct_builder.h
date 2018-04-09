@@ -5,11 +5,8 @@
 #include "mole.h"
 
 #include <string>
-#include <vector>
 #include <set>
 #include <map>
-
-typedef std::vector<int> Center;
 
 struct Index {
     std::string moleId;
@@ -30,15 +27,13 @@ inline bool operator!=(const Index& index1, const Index& index2) {
 
 class CorrectBuilder {
 public:
-    CorrectBuilder(Map& maptool, const std::string& prefix="default") : _maptool(maptool), _prefix(prefix) {
+    CorrectBuilder(const std::string& parameterFile="parameters.ini", const std::string& prefix="default") : _parameterFile(parameterFile), _prefix(prefix) {
     }
     bool build(const std::string& moleFile, const std::string& clusterFile, double minScore, const std::string& output, int thread=1) const;
     void alignment(const std::map<std::string, Mole>& moleSet, const std::vector<Index>& indexes, const Index& voteCenter, std::vector<Alignment>& alignments) const;
     void divide(const std::vector<Alignment>& alignments, std::map<int, std::vector<Alignment>>& dividedAlignments) const;
-    Center vote(std::vector<Alignment>& alignments) const;
-    Index center(const std::vector<Index>& indexes) const;
 private:
-    Map _maptool;
+    std::string _parameterFile;
     std::string _prefix;
 
 };

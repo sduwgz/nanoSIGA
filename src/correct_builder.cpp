@@ -7,12 +7,18 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/thread.hpp>
 
 #include <log4cxx/logger.h>
 
+typedef std::vector<int> Center;
+typedef std::map<std::string, Mole> MoleSet;
+typedef std::vector<std::vector<Index>> IndexesSet;
+typedef std::map<int, std::vector<Center>> CenterSet;
+
 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("nanoARCS.correct"));
 
-Index CorrectBuilder::center(const std::vector<Index>& indexes) const {
+Index center(const std::vector<Index>& indexes) {
     Index centerIndex("-1", 0, 0);
     for(auto index : indexes) {
         if(index.endSite - index.startSite > centerIndex.endSite - centerIndex.startSite)
@@ -20,38 +26,7 @@ Index CorrectBuilder::center(const std::vector<Index>& indexes) const {
     }
     return centerIndex;
 }
-void CorrectBuilder::alignment(const std::map<std::string, Mole>& moleSet, const std::vector<Index>& indexes, const Index& centerIndex, std::vector<Alignment>& alignments) const {
-    if(moleSet.find(centerIndex.moleId) != moleSet.end()) {
-        auto it = moleSet.find(centerIndex.moleId);
-        Mole centerMole = it->second;
-        std::string newId = centerIndex.moleId + "|";
-        newId += std::to_string(centerIndex.startSite);
-        centerMole.setID(newId);
-        centerMole.shear(centerIndex.startSite);
-        for(Index index : indexes) {
-            if(index.moleId == centerIndex.moleId) continue;
-            LOG4CXX_DEBUG(logger, boost::format("Alignment between index %s and center %s.") % index.toString() % centerIndex.toString());
-            if(moleSet.find(index.moleId) != moleSet.end()) {
-                it = moleSet.find(index.moleId);
-                Mole m2 = it->second;
-                m2.shear(index.startSite);
-                newId = index.moleId + "|";
-                newId += std::to_string(index.startSite);
-                m2.setID(newId);
-                Alignment align = _maptool.localDPscore(centerMole, m2);
-                if(align.score <= 15) {
-                    continue;
-                }
-                alignments.push_back(align);
-            } else {
-                LOG4CXX_WARN(logger, boost::format("Index %s is not in cluster.") % index.toString());
-            }
-        }
-    } else {
-        LOG4CXX_WARN(logger, boost::format("center %s is not in cluster.") % centerIndex.toString());
-    }
-}
-Center CorrectBuilder::vote(std::vector<Alignment>& alignments) const {
+Center vote(std::vector<Alignment>& alignments) {
     for(Alignment al : alignments) {
         al.print(std::cout, true);
     }
@@ -219,17 +194,65 @@ Center CorrectBuilder::vote(std::vector<Alignment>& alignments) const {
     std::cout << std::endl;
     return voteCenter;
 }
-void CorrectBuilder::divide(const std::vector<Alignment>& alignments, std::map<int, std::vector<Alignment>>& dividedAlignments) const {
+void divide(const std::vector<Alignment>& alignments, std::map<int, std::vector<Alignment>>& dividedAlignments) {
     int clusterSize = alignments.size();
     for(int i = 0; i < clusterSize; ++ i) {
         int templateStart = alignments[i].mole1Start;
         int othersStart = alignments[i].mole2Start;
-        std::cout << "Divide:" << templateStart << " " << othersStart << std::endl;
         dividedAlignments[templateStart].push_back(alignments[i]);
     }
 }
+void alignment(const Map* maptool, const std::map<std::string, Mole>& moleSet, const std::vector<Index>& indexes, const Index& centerIndex, std::vector<Alignment>& alignments) {
+    if(moleSet.find(centerIndex.moleId) != moleSet.end()) {
+        auto it = moleSet.find(centerIndex.moleId);
+        Mole centerMole = it->second;
+        std::string newId = centerIndex.moleId + "|";
+        newId += std::to_string(centerIndex.startSite);
+        centerMole.setID(newId);
+        centerMole.shear(centerIndex.startSite);
+        for(Index index : indexes) {
+            if(index.moleId == centerIndex.moleId) continue;
+            LOG4CXX_DEBUG(logger, boost::format("Alignment between index %s and center %s.") % index.toString() % centerIndex.toString());
+            if(moleSet.find(index.moleId) != moleSet.end()) {
+                it = moleSet.find(index.moleId);
+                Mole m2 = it->second;
+                m2.shear(index.startSite);
+                newId = index.moleId + "|";
+                newId += std::to_string(index.startSite);
+                m2.setID(newId);
+                Alignment align = maptool->localDPscore(centerMole, m2);
+                if(align.score <= 15) {
+                    continue;
+                }
+                alignments.push_back(align);
+            } else {
+                LOG4CXX_WARN(logger, boost::format("Index %s is not in cluster.") % index.toString());
+            }
+        }
+    } else {
+        LOG4CXX_WARN(logger, boost::format("center %s is not in cluster.") % centerIndex.toString());
+    }
+}
+//void start(const Map* maptool, const MoleSet* moleSetPtr, const IndexesSet* indexesSetPtr, CenterSet* centerSetPtr, int threadNum, int threadId) {
+void start(const Map* maptool, const MoleSet& moleSet, const IndexesSet& indexesSet, CenterSet* centerSetPtr, int threadNum, int threadId) {
+    //const MoleSet& moleSet = *moleSetPtr;
+    //const IndexesSet& indexesSet = *indexesSetPtr;
+    CenterSet& centerSet = *centerSetPtr;
+    for(int i = threadId; i < indexesSet.size(); i += threadNum) {
+        auto indexes = indexesSet[i];
+        Index centerIndex = center(indexes);
+        std::vector<Alignment> alignments;
+        alignment(maptool, moleSet, indexes, centerIndex, alignments);
+        std::map<int, std::vector<Alignment>> dividedAlignments;
+        divide(alignments, dividedAlignments);
+        for(auto it : dividedAlignments) {
+            Center voteCenter = vote(it.second);
+            centerSet[i].push_back(voteCenter);
+        }
+    }
+}
 bool CorrectBuilder::build(const std::string& moleFile, const std::string& clusterFile, double minScore, const std::string& output, int thread) const {
-    std::map<std::string, Mole> moleSet;
+    MoleSet moleSet;
     if (boost::filesystem::exists(moleFile)) {
         std::ifstream moleInstream(moleFile.c_str());
         MoleReader mReader(moleInstream);
@@ -255,6 +278,7 @@ bool CorrectBuilder::build(const std::string& moleFile, const std::string& clust
     }
     if (boost::filesystem::exists(clusterFile)) {
         std::vector<Index> indexes;
+        IndexesSet indexesSet;
         std::ifstream clusterInstream(clusterFile.c_str());
         std::ofstream resOutstream(output.c_str());
         std::string line;
@@ -269,20 +293,33 @@ bool CorrectBuilder::build(const std::string& moleFile, const std::string& clust
                 boost::split(indexString, ind, boost::is_any_of("|"), boost::token_compress_on);
                 indexes.emplace_back(indexString[0], boost::lexical_cast<int>(indexString[1]), boost::lexical_cast<int>(indexString[2]));
             } 
-            Index centerIndex = center(indexes);
-            std::vector<Alignment> alignments;
-            alignment(moleSet, indexes, centerIndex, alignments);
-            std::map<int, std::vector<Alignment>> dividedAlignments;
-            divide(alignments, dividedAlignments);
-            if(dividedAlignments.size() != 1) {
-                LOG4CXX_DEBUG(logger, boost::format("cluster %s is a mixCluster, divided into %d clusters.") % line % dividedAlignments.size());
+            indexesSet.push_back(indexes);
+        }
+        CenterSet centerSet;
+        boost::thread_group group;
+        std::vector<CenterSet> threadCenterSet(thread);
+        Map* maptool = Map::instance(_parameterFile);
+        const MoleSet* moleSetPtr = &moleSet;
+        const IndexesSet* indexesSetPtr = &indexesSet;
+        for(int i = 0; i < thread; ++ i) {
+            CenterSet* centerSetPtr = &threadCenterSet[i];
+            //group.create_thread(boost::bind(start, maptool, moleSetPtr, indexesSetPtr, centerSetPtr, thread, i));
+            group.create_thread(boost::bind(start, maptool, moleSet, indexesSet, centerSetPtr, thread, i));
+        }
+        group.join_all();
+        for(int i = 0; i < thread; ++ i) {
+            std::cout << i << " " << threadCenterSet[i].size() << std::endl;
+
+            for(auto it = threadCenterSet[i].begin(); it != threadCenterSet[i].end(); ++ it) {
+                centerSet.insert(*it);
             }
-            for(auto it : dividedAlignments) {
-                Center voteCenter = vote(it.second);
-                for(Alignment al : it.second) {
-                    resOutstream << al.mole2Id << "|" << al.mole2Start << "|" << al.mole2End << " ";
-                }
-                resOutstream << it.second[0].mole1Id << "|" << it.second[0].mole1Start << "|" << it.second[0].mole1End << '\n';
+        }
+        for(int i = 0; i < centerSet.size(); ++ i) {
+            if(centerSet[i].size() != 1) {
+                LOG4CXX_DEBUG(logger, boost::format("cluster %s is a mixCluster, divided into %d clusters.") % i % centerSet[i].size());
+            }
+            for(auto it = centerSet[i].begin(); it != centerSet[i].end(); ++ it) {
+                Center voteCenter = *it;
                 for(int i = 0; i < voteCenter.size(); ++ i) {
                     resOutstream << voteCenter[i] << " ";
                 }

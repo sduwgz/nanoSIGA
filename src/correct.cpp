@@ -68,8 +68,7 @@ int Correcting::run(const Properties options, const Arguments& args) {
         parameter_file = options.get< std::string > ("parameter");
     }
     
-    Map maptool(parameter_file);
-    CorrectBuilder builder(maptool, output);
+    CorrectBuilder builder(parameter_file, output);
     if(!builder.build(moleFile, input, options.get< double >("minscore", 15.0), output, options.get< size_t >("threads", 1))) {
         LOG4CXX_ERROR(logger, boost::format("Failed to correct form %s alignments") % input);
         r = -1;
