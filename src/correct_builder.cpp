@@ -26,6 +26,42 @@ Index center(const std::vector<Index>& indexes) {
     }
     return centerIndex;
 }
+int clacDistance(std::vector<int> distance) {
+    int tempDis = 0;
+    if(distance.size() == 2)
+        tempDis = std::accumulate(distance.begin(), distance.end(), 0.0) / distance.size();
+    else if(distance.size() == 3) {
+        int ta = abs(distance[0] - distance[1]);
+        int tb = abs(distance[2] - distance[1]);
+        int tc = abs(distance[2] - distance[0]);
+        if(ta < tb && ta < tc) {
+            tempDis = (distance[0] + distance[1]) / 2;
+        } else if(tb < ta && tb < tc)
+            tempDis = (distance[2] + distance[1]) / 2;
+        else
+            tempDis = (distance[2] + distance[0]) / 2;
+    } else {
+        std::sort(distance.begin(), distance.end());
+        int maxCluster = 0, maxIndex = 0;
+        for(int i = 0; i < distance.size(); ++ i) {
+            int count = 0;
+            for(int j = i; j < distance.size(); ++ j) {
+                if(distance[j] - distance[i] < 500) {
+                    count ++;
+                }
+            }
+            if(maxCluster < count) {
+                maxCluster = count;
+                maxIndex = i;
+            }
+        }
+        if(maxCluster == 1) {
+            maxIndex = 0, maxCluster = distance.size();
+        }
+        tempDis = std::accumulate(distance.begin() + maxIndex, distance.begin() + maxIndex + maxCluster, 0.0) / (maxCluster);
+    }
+    return tempDis;
+}
 Center vote(std::vector<Alignment>& alignments) {
     for(Alignment al : alignments) {
         al.print(std::cout, true);
@@ -177,7 +213,7 @@ Center vote(std::vector<Alignment>& alignments) {
             s2 = std::accumulate(midSite2.begin(), midSite2.end(), 0.0) / midSite2.size();
             voteCenter.push_back(s2);
         }
-        int tempDis = std::accumulate(distance.begin(), distance.end(), 0.0) / distance.size() - s1 - s2;
+        int tempDis = clacDistance(distance) - s1 - s2;
         voteCenter.push_back(std::max(tempDis , 1));
         for(int i = 0; i < preSite.size(); ++ i) {
             if(nextSite[i] != -1) {
@@ -319,6 +355,7 @@ bool CorrectBuilder::build(const std::string& moleFile, const std::string& clust
                 LOG4CXX_DEBUG(logger, boost::format("cluster %s is a mixCluster, divided into %d clusters.") % i % centerSet[i].size());
             }
             for(auto it = centerSet[i].begin(); it != centerSet[i].end(); ++ it) {
+                resOutstream << i << '-' << it - centerSet[i].begin() <<  '\n';
                 Center voteCenter = *it;
                 for(int i = 0; i < voteCenter.size(); ++ i) {
                     resOutstream << voteCenter[i] << " ";
