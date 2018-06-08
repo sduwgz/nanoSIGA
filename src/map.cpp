@@ -112,8 +112,8 @@ double Map::probLaplace(int delta) const {
 }
 
 Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
-    std::vector<int> d1 = m1.getDistance();
-    std::vector<int> d2 = m2.getDistance();
+    std::vector<int> d1 = m1.getData();
+    std::vector<int> d2 = m2.getData();
     std::vector<Fragment> alignedMole1;
     std::vector<Fragment> alignedMole2;
     int rows = d1.size() + 1, cols = d2.size() + 1;
