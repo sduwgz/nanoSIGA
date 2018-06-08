@@ -12,6 +12,9 @@ const int EPSILON = 1;
 const int MAXCLUSTER = 10000;
 const int DEC = 1;
 
+//
+const int BATCH = 10000;
+
 //Length of integral interval
 const int Interval = 100;
 

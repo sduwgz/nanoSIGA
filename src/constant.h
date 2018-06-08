@@ -13,7 +13,7 @@ extern const int MAXITER;
 extern const int EPSILON;
 extern const int MAXCLUSTER;
 extern const int DEC;
-
+extern const int BATCH;
 //Length of integral interval
 extern const int Interval;
 

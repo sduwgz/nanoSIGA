@@ -36,7 +36,7 @@ private:
                 "      -h, --help                       display this help and exit\n"
                 "\n"
                 "      -t, --threads=NUM                use NUM threads to construct the index (default: 1)\n"
-                "      -m, --min-score=f                minimum aligment score required between two reads (default: 45)\n"
+                "      -m, --min-score=f                minimum aligment score required between two reads (default: 5)\n"
                 "      -o, --prefix=PREFIX              write index to file using PREFIX instead of prefix of READSFILE\n"
                 "\n"
                 ) << std::endl;

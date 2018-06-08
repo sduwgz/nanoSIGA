@@ -2,6 +2,7 @@
 #define overlap_builder_h_
 
 #include "map.h"
+#include "index.h"
 #include <string>
 #include <vector>
 
