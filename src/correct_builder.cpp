@@ -327,7 +327,7 @@ bool CorrectBuilder::build(const std::string& moleFile, const std::string& clust
                 std::vector<std::string> indexString;
                 LOG4CXX_DEBUG(logger, boost::format("an index %s.") % ind);
                 boost::split(indexString, ind, boost::is_any_of("|"), boost::token_compress_on);
-                indexes.emplace_back(indexString[0], boost::lexical_cast<int>(indexString[1]), boost::lexical_cast<int>(indexString[2]));
+                indexes.emplace_back(indexString[0], boost::lexical_cast<int>(indexString[1]), moleSet[indexString[0]].size());
             } 
             indexesSet.push_back(indexes);
         }
