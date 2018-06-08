@@ -1,4 +1,5 @@
 /data/
+/result/
 /scripts/
 /CMakeFiles/
 cmake_install.cmake
