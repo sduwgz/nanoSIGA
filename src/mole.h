@@ -68,7 +68,7 @@ public:
     virtual ~Mole() {}
     bool getDistance(); 
     Mole reverseMole();    
-    std::vector<int> getDistance() const {
+    std::vector<int> getData() const {
        return _distance;
     } 
     std::string getID() const {
@@ -77,6 +77,9 @@ public:
     void setID(const std::string& s) {
        _id = s;
     } 
+    size_t size() const {
+        return _position.size();
+    }
     int getInterval(const int index) const {
         if(index > _distance.size()) return 0;
         return _distance[index];

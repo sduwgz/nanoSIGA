@@ -43,7 +43,7 @@ bool MoleReader::read(Mole& mole) {
         boost::algorithm::trim(buf);
         LOG4CXX_DEBUG(logger, boost::format("line: %s") % buf);
 
-        if (buf.empty()) continue;
+        if (buf[0] == '#' || buf.empty()) continue;
         if (state == moleId) {
             boost::algorithm::split(data, buf, boost::algorithm::is_any_of(" \t"), boost::algorithm::token_compress_on);
             if (boost::lexical_cast<int>(data[0]) == 0) {
