@@ -40,6 +40,12 @@ struct Alignment {
         }
         return os;
     }
+    size_t size() {
+        return alignedMole1.size();
+    }
+    double getScore() {
+        return score;
+    }
     void trimHead() {
         while(abs(std::accumulate(alignedMole1[0].begin(), alignedMole1[0].end(), 0) - std::accumulate(alignedMole2[0].begin(), alignedMole2[0].end(), 0)) > 1500 || alignedMole1[0].size() > 1 || alignedMole2[0].size() > 1) {
             mole1Start += alignedMole1[0].size();
@@ -56,6 +62,14 @@ struct Alignment {
             alignedMole2.pop_back();
         }
     }
+};
+
+class AlignmentReader {
+public:
+    AlignmentReader(std::istream& stream) : _stream(stream) {};
+    bool read(Alignment& al);
+private:
+    std::istream& _stream;
 };
 
 class Mole {
