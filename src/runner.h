@@ -35,8 +35,6 @@ protected:
 typedef Runner* RunnerPtr;
 class RunnerManager {
 public:
-    RunnerManager() {
-    }
     virtual ~RunnerManager() {
     }
     static RunnerManager* instance() {
@@ -67,6 +65,8 @@ public:
         std::cout << "Usage: XXX" << std::endl;
     }
 private:
+    RunnerManager() {
+    }
     std::map<std::string, RunnerPtr> _runners;
 };
 #endif //runner_h_
