@@ -117,7 +117,7 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
     std::vector<Fragment> alignedMole1;
     std::vector<Fragment> alignedMole2;
     int rows = d1.size() + 1, cols = d2.size() + 1;
-    LOG4CXX_DEBUG(logger, boost::format("Rows: %d, Cols: %d") %rows %cols);
+    LOG4CXX_TRACE(logger, boost::format("Rows: %d, Cols: %d") %rows %cols);
     double scoreMatrix[rows][cols];
     int trackMatrix[rows][cols];
     for (int i = 0; i < rows; ++ i) {
@@ -132,7 +132,7 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
     for (int j = 0; j < cols; ++ j) {
         scoreMatrix[0][j] = 0;
     }
-    LOG4CXX_DEBUG(logger, boost::format("Init is successful."));
+    LOG4CXX_TRACE(logger, boost::format("Init is successful."));
     for (int i = 1; i < rows; ++ i) {
         for (int j = 1; j < cols; ++ j) {
             Fragment moleFragment, geneFragment;
@@ -177,7 +177,7 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
             } 
         }
     }
-    LOG4CXX_DEBUG(logger, boost::format("DP finished."));
+    LOG4CXX_TRACE(logger, boost::format("DP finished."));
     
     double maxScore = INIT_SCORE;
     int maxI = 0, maxJ = 0, startI = -1, startJ = -1;
@@ -199,10 +199,10 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
     int trackI = maxI, trackJ = maxJ;
     while(trackI != 0 && trackJ != 0) {
         Fragment f1, f2;
-        LOG4CXX_DEBUG(logger, boost::format("Track: %d %d %d") %trackI %trackJ %trackMatrix[trackI][trackJ]);
+        LOG4CXX_TRACE(logger, boost::format("Track: %d %d %d") %trackI %trackJ %trackMatrix[trackI][trackJ]);
         int nextI = trackMatrix[trackI][trackJ] / cols;
         int nextJ = trackMatrix[trackI][trackJ] % cols;
-        LOG4CXX_DEBUG(logger, boost::format("Next: %d %d") %nextI %nextJ);
+        LOG4CXX_TRACE(logger, boost::format("Next: %d %d") %nextI %nextJ);
         for(int i = nextI; i < trackI; ++ i) {
             //std::cout << d1[i - 1] << std::endl;
             f1.push_back(d1[i]);
@@ -218,7 +218,7 @@ Alignment Map::localDPscore(const Mole& m1, const Mole& m2) const {
     }
     reverse(alignedMole1.begin(), alignedMole1.end());
     reverse(alignedMole2.begin(), alignedMole2.end());
-    LOG4CXX_DEBUG(logger, boost::format("Track finished."));
+    LOG4CXX_TRACE(logger, boost::format("Track finished."));
     int len1 = maxI - trackI;
     int len2 = maxJ - trackJ;
     //len1 compare with len2

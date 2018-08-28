@@ -41,7 +41,7 @@ bool MoleReader::read(Mole& mole) {
     std::vector<std::string> data;
     while (std::getline(_stream, buf)) {
         boost::algorithm::trim(buf);
-        LOG4CXX_DEBUG(logger, boost::format("line: %s") % buf);
+        LOG4CXX_TRACE(logger, boost::format("line: %s") % buf);
 
         if (buf[0] == '#' || buf.empty()) continue;
         if (state == moleId) {
@@ -110,7 +110,7 @@ bool AlignmentReader::read(Alignment& al) {
     std::vector<std::string> data;
     if(std::getline(_stream, buf)) {
         boost::algorithm::trim(buf);
-        LOG4CXX_DEBUG(logger, boost::format("line: %s") % buf);
+        LOG4CXX_TRACE(logger, boost::format("line: %s") % buf);
 
         boost::algorithm::split(data, buf, boost::algorithm::is_any_of(" \t"), boost::algorithm::token_compress_on);
         al.mole1Id = data[0];
@@ -124,7 +124,7 @@ bool AlignmentReader::read(Alignment& al) {
 
         std::getline(_stream, buf);
         boost::algorithm::trim(buf);
-        LOG4CXX_DEBUG(logger, boost::format("line: %s") % buf);
+        LOG4CXX_TRACE(logger, boost::format("line: %s") % buf);
         boost::algorithm::split(data, buf, boost::algorithm::is_any_of(" \t"), boost::algorithm::token_compress_on);
         AlignedMole a1, a2;
         for(auto fragstr : data) {
@@ -139,7 +139,7 @@ bool AlignmentReader::read(Alignment& al) {
         }
         std::getline(_stream, buf);
         boost::algorithm::trim(buf);
-        LOG4CXX_DEBUG(logger, boost::format("line: %s") % buf);
+        LOG4CXX_TRACE(logger, boost::format("line: %s") % buf);
         boost::algorithm::split(data, buf, boost::algorithm::is_any_of(" \t"), boost::algorithm::token_compress_on);
         for(auto fragstr : data) {
             Fragment frag;
