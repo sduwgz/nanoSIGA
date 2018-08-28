@@ -20,13 +20,12 @@ void start(const Map* maptool, const Index* index, const std::vector<Mole>& mole
             std::cout << i / threads << std::endl;
         if(moleSet[i].size() < 6) continue;
         auto hitMole = index->query(moleSet[i]);
-        if(hitMole.size() > 0) {
+        if(hitMole.size() > 10) {
             for(int j = i + 1; j < moleSet.size(); ++ j) {
                 if(hitMole.find(moleSet[j].getID()) != hitMole.end()) {
                     Alignment align = maptool->localDPscore(moleSet[i], moleSet[j]);
                     //a hard threshold
-                    //if(align.score < minScore || align.score / align.alignedMole1.size() < (minScore / 10)) {
-                    if(align.score < minScore) {
+                    if(align.getScore() < minScore || align.getScore() / align.size() < (minScore / 20)) {
                         continue;
                     }
                     alignments.push_back(align);
@@ -36,8 +35,7 @@ void start(const Map* maptool, const Index* index, const std::vector<Mole>& mole
             for(int j = i + 1; j < moleSet.size(); ++ j) {
                 Alignment align = maptool->localDPscore(moleSet[i], moleSet[j]);
                 //a hard threshold
-                //if(align.score < minScore || align.score / align.alignedMole1.size() < (minScore / 10)) {
-                if(align.score < minScore) {
+                if(align.getScore() < minScore || align.getScore() / align.size() < (minScore / 20)) {
                     continue;
                 }
                 alignments.push_back(align);
@@ -74,7 +72,7 @@ void alignment(const std::string parameterFile, const std::vector<Mole>& moleSet
                 //ret.trimTail();
             }
             if(ret.score > minScore) {
-                ret.print(overlapOutstream, false);
+                ret.print(overlapOutstream, true);
             }
         }
     }

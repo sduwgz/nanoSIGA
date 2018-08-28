@@ -22,7 +22,7 @@ class Contigging : public Runner {
 public:
     virtual int run(const Properties options, const Arguments& arg);
 private:
-    Contigging() : Runner("a:f:o:t:p:", boost::assign::map_list_of('a', "algorithm")('f', "correctedfile")('o', "prefix")('t', "threads")('p', "parameter")) {
+    Contigging() : Runner("a:f:o:t:p:A:", boost::assign::map_list_of('a', "algorithm")('f', "correctedfile")('o', "prefix")('t', "threads")('p', "parameter")('A', "alignment")) {
         RunnerManager::instance()->install("contig", this);
     }
     int checkOptions(const Properties options, const Arguments& args) const {
@@ -58,8 +58,12 @@ int Contigging::run(const Properties options, const Arguments& args) {
     std::string input = args[0];
     LOG4CXX_INFO(logger, boost::format("input file is: %s") % input);
     std::string output = boost::filesystem::path(input).stem().string() + ".out";
+    std::string alignmentFile = "";
     if(options.find("prefix") != options.not_found()) {
         output = options.get< std::string > ("prefix");
+    }
+    if(options.find("alignment") != options.not_found()) {
+        alignmentFile = options.get< std::string > ("alignment");
     }
     LOG4CXX_INFO(logger, boost::format("output file is: %s") % output);
     std::string parameter_file = "parameters.ini";
@@ -68,7 +72,7 @@ int Contigging::run(const Properties options, const Arguments& args) {
     }
     Map maptool(parameter_file);
     ContigBuilder builder(maptool, output);
-    if(!builder.build(input, output, options.get< double > ("minscore", 25.0), options.get< size_t> ("threads", 1))) {
+    if(!builder.build(input, output, alignmentFile, options.get< double > ("minscore", 25.0), options.get< size_t> ("threads", 1))) {
         LOG4CXX_ERROR(logger, boost::format("Fail to build contig from %s corrected centers") % input);
         r = -1;
     }

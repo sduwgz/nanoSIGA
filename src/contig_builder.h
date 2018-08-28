@@ -34,7 +34,7 @@ public:
     }
     void start(const std::vector<Mole>* moleSetPtr, std::vector<Alignment>* alignmentsPtr, double minScore, int threads, int threadId) const;
     void alignment(const std::vector<Mole>& moleSet, std::vector<Alignment>& alignments, int threadNum, double minScore) const;
-    bool build(const std::string& input, const std::string& output, double minScore, int threads=16) const;
+    bool build(const std::string& input, const std::string& output, const std::string& alignmentFile, double minScore, int threads=16) const;
     
 private:
     Map _maptool;

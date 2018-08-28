@@ -230,7 +230,9 @@ void divide1(std::set<Vertex>& component, const Graph& graph, Components& divide
     }
     
 }
-
+void EMCalling() {
+    
+}
 void topoSort(SiteGraph& spreGraph, SiteGraph& spostGraph, std::vector<int>& spath) {
     // get start
     for(auto site : spreGraph) {
