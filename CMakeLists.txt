@@ -9,6 +9,8 @@ INCLUDE_DIRECTORIES(/usr/include/)
         ./src/map.cpp
         ./src/mole.h
         ./src/mole.cpp
+        ./src/index.h
+        ./src/index.cpp
         ./src/overlap_builder.h
         ./src/overlap_builder.cpp
         ./src/overlap.cpp
