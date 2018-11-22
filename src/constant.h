@@ -1,5 +1,6 @@
 #ifndef constant_h_
 #define constant_h_
+#include<string>
 
 extern const char* kLogConfig;
 
@@ -27,5 +28,9 @@ extern const double INIT_SCORE;
 //Parameter in deletion model
 extern const int UNIT_LENGTH;
 extern const int MAX_DELETION; 
+
+//Chip id
+extern const std::string CHIP_ID;
+extern const std::string CMP_HEADER;
 #endif //constant_h_
 
