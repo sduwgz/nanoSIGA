@@ -20,7 +20,7 @@ void start(const Map* maptool, const Index* index, const std::vector<Mole>& mole
             std::cout << i / threads << std::endl;
         if(moleSet[i].size() < 6) continue;
         auto hitMole = index->query(moleSet[i]);
-        if(hitMole.size() > 10) {
+        if(hitMole.size() > 30) {
             for(int j = i + 1; j < moleSet.size(); ++ j) {
                 if(hitMole.find(moleSet[j].getID()) != hitMole.end()) {
                     Alignment align = maptool->localDPscore(moleSet[i], moleSet[j]);
@@ -32,7 +32,7 @@ void start(const Map* maptool, const Index* index, const std::vector<Mole>& mole
                 }
             }
         } else {
-            for(int j = i + 1; j < moleSet.size(); ++ j) {
+            for(int j = 0; j < moleSet.size(); ++ j) {
                 Alignment align = maptool->localDPscore(moleSet[i], moleSet[j]);
                 //a hard threshold
                 if(align.getScore() < minScore || align.getScore() / align.size() < (minScore / 20)) {
@@ -43,10 +43,13 @@ void start(const Map* maptool, const Index* index, const std::vector<Mole>& mole
         }
     }
 }
-void alignment(const std::string parameterFile, const std::vector<Mole>& moleSet, std::ofstream& overlapOutstream, int threads, double minScore, int trim=1) {
+void alignment(const std::string parameterFile, const std::vector<Mole>& moleSet, std::ofstream& overlapOutstream, int threads, double minScore, int trim=1, bool useHash=false) {
     //build index
     Index *index = new Index(3);
-    index->build(moleSet);
+    if(useHash) {
+        index->build(moleSet);
+        LOG4CXX_INFO(logger, boost::format("Hash table has been built."));
+    }
     Map* maptool = Map::instance(parameterFile);
     //const std::vector<Mole>* moleSetPtr = &moleSet;
     int n = moleSet.size() / BATCH + 1;
@@ -78,15 +81,16 @@ void alignment(const std::string parameterFile, const std::vector<Mole>& moleSet
     }
 }
 
-bool OverlapBuilder::build(const std::string& input, double minScore, const std::string& output, size_t threads, int trim, int reverseLabel) const {
+bool OverlapBuilder::build(const std::string& input, double minScore, const std::string& output, size_t threads, int trim, bool reverseLabel, bool useHash) const {
     std::vector<Mole> moleSet;
     if (boost::filesystem::exists(input)) {
         std::ifstream moleInstream(input.c_str());
         MoleReader mReader(moleInstream);
         Mole m;
         while(mReader.read(m)) {
+            if(m.size() < 10) continue;
             moleSet.push_back(m);
-            if (reverseLabel == 1) {
+            if (reverseLabel) {
                 Mole reMole = m.reverseMole();
                 moleSet.push_back(reMole);
             }
@@ -104,7 +108,7 @@ bool OverlapBuilder::build(const std::string& input, double minScore, const std:
     }
     std::ofstream overlapOutstream(output.c_str());
     //std::vector<Alignment> alignments;
-    alignment(_parameterFile, moleSet, overlapOutstream, threads, minScore);
+    alignment(_parameterFile, moleSet, overlapOutstream, threads, minScore, 1, useHash);
     //TODO
     return true;
 }
