@@ -88,7 +88,7 @@ bool OverlapBuilder::build(const std::string& input, double minScore, const std:
         MoleReader mReader(moleInstream);
         Mole m;
         while(mReader.read(m)) {
-            if(m.size() < 10) continue;
+            if(m.size() < 10 || m.size() > 40) continue;
             moleSet.push_back(m);
             if (reverseLabel) {
                 Mole reMole = m.reverseMole();
