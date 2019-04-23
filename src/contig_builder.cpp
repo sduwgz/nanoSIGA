@@ -57,6 +57,10 @@ void ContigBuilder::alignment(const std::vector<Mole>& moleSet, std::vector<Alig
 
 
 void ContigBuilder::constructGraph(const std::vector<Alignment>& alignments, Graph& graph1, Graph& graph2, edgeSet& edges) const {
+    //filter alignment using LSAT
+    std::map<std::string, std::vector<int>> moleAlignment;
+    
+
     //connect the sites
     for(Alignment al : alignments) {
         std::string m1 = al.mole1Id;
@@ -112,12 +116,17 @@ void bfsSearch(Graph& graph, edgeSet& edges, int minCluster, Components& comps) 
             std::set_intersection(graph[v].begin(), graph[v].end(), graph[u].begin(), graph[u].end(), std::back_inserter(set_intersection));
             std::set_union(graph[v].begin(), graph[v].end(), graph[u].begin(), graph[u].end(), std::back_inserter(set_union));
             //remove edges
-            if(set_union.size() / set_intersection.size() < 4) {
+            if(set_intersection.size() == 2 && (graph[v].size() > 4 || graph[u].size() > 4)) {
+                continue;
+            }
+
+            if(set_intersection.size() && set_union.size() / set_intersection.size() < 4) {
                 refinedGraph[v].insert(u);
             }
         }
 
     }
+    std::cout << "refine finished" << std::endl;
     //bfs visit to find all connected components.
     std::map<Vertex, int> colors;
     for(auto it : refinedGraph) {
@@ -126,7 +135,7 @@ void bfsSearch(Graph& graph, edgeSet& edges, int minCluster, Components& comps) 
     std::queue<Vertex> q;
     std::set<Vertex> comp;
     int count = 0;
-    for(auto it : graph) {
+    for(auto it : refinedGraph) {
         if(colors[it.first] != 0) continue;
         comp.clear();
         q.push(it.first);
@@ -155,7 +164,7 @@ void bfsSearch(Graph& graph, edgeSet& edges, int minCluster, Components& comps) 
         count ++;
         LOG4CXX_DEBUG(logger, boost::format("#%d cluster, cluster size is %d.") % count % comp.size());
         //filter small comp
-        if(comp.size() < 2) continue;
+        if(comp.size() <= 2) continue;
         comps.push_back(comp);
     }
 }
@@ -268,7 +277,7 @@ void topoSort(SiteGraph& spreGraph, SiteGraph& spostGraph, std::vector<int>& spa
     std::cout << "contig topo" << std::endl;
     for(auto site : spreGraph) {
         for(auto nsite : site.second) {
-            std::cout << site.first << "--" << nsite << ";" << std::endl;
+            std::cout << site.first << "->" << nsite << ";" << std::endl;
         }
         if(spostGraph.find(site.first) == spostGraph.end()) {
             spath.push_back(site.first);
@@ -288,7 +297,14 @@ void topoSort(SiteGraph& spreGraph, SiteGraph& spostGraph, std::vector<int>& spa
             }
         }
         if(tempSite == -1 && spostGraph.size() != 0) {
+            std::cout << spath.size() << " " << spostGraph.size() << std::endl;
             LOG4CXX_INFO(logger, boost::format("there is a circle in siteGraph."));
+            for(auto site : spostGraph) {
+                if(site.second.size() != 0) {
+                    std::cout << site.first << " [style=\"filled\", fillcolor=\"red\"];" << std::endl;
+                }
+            }
+            std::cout << std::endl;
             break;
         }
         spath.push_back(tempSite);
@@ -299,14 +315,14 @@ void topoSort(SiteGraph& spreGraph, SiteGraph& spostGraph, std::vector<int>& spa
     }
 }
 
-std::vector<std::pair<int, int> > nextSites(const Components& comps, const std::set<Vertex>& curcomp, std::vector<Mole>& moleSet) {
+std::vector<std::pair<int, int> > nextSites(const Components& comps, const std::set<Vertex>& curcomp, const std::set<int>& moleComps, std::vector<Mole>& moleSet) {
     //TODO: slove wrong connection
     int nextcomp = 1;
     std::vector<std::pair<int, int>> res;
     std::vector<int> distances;
     int minDistance = INT_MAX;
     std::map<std::string, int> siteOnmole;
-    for(int i = 0; i < comps.size(); ++ i) {
+    for(int i : moleComps) {
         auto comp = comps[i];
         distances.clear();
         bool label = false;
@@ -336,7 +352,7 @@ std::vector<std::pair<int, int> > nextSites(const Components& comps, const std::
     res.erase(std::remove_if(res.begin(), res.end(), f), res.end());
     //debug information
     std::unordered_map<std::string, size_t> idIndex;
-    for(size_t i = 0; i < moleSet.size(); ++ i) {
+    for(int i = 0; i < moleSet.size(); ++ i) {
         idIndex[moleSet[i].getID()] = i;
     }
     std::cout << "next comps:" << std::endl;
@@ -357,10 +373,6 @@ std::vector<std::pair<int, int> > nextSites(const Components& comps, const std::
                 for(Vertex ps : curcomp) {
                     if(ns.moleId == ps.moleId) {
                         for(int ss = ps.startSite; ss < ns.startSite; ++ ss) {
-                            //std::cout << ss << std::endl;
-                            //std::cout << ps.moleId << std::endl;
-                            //std::cout << idIndex[ps.moleId] << std::endl;
-                            //std::cout << moleSet[idIndex[ps.moleId]].size() << std::endl;
                             std::cout << ps.to_string() << " " << ns.to_string() << " " << moleSet[idIndex[ps.moleId]].getInterval(ss) << std::endl;
                         }
                         distance.push_back(moleSet[idIndex[ps.moleId]].getInterval(ps.startSite));
@@ -411,11 +423,20 @@ void component(const SiteGraph& sgraph, std::vector<std::set<int>>& parts) {
 bool connect(const Components& comps, std::vector<Mole>& moleSet, std::vector<std::vector<int>>& contigs) {
     //construct contig graph
     SiteGraph sGraph, spreGraph, spostGraph;
+    std::map<std::string, std::vector<int>> moleInComps;
+    for(int i = 0; i < comps.size(); ++ i) {
+        for(Vertex v : comps[i]) {
+            moleInComps[v.moleId].push_back(i);
+        }
+    }
     std::vector<int> contig;
     for(int i = 0; i < comps.size(); ++ i) {
         auto curcomp = comps[i];
-        std::cout << i << std::endl;
-        auto nextComps = nextSites(comps, curcomp, moleSet);
+        std::set<int> moleComps;
+        for(Vertex v : curcomp) {
+            moleComps.insert(moleInComps[v.moleId].begin(), moleInComps[v.moleId].end());
+        }
+        auto nextComps = nextSites(comps, curcomp, moleComps, moleSet);
         // add a edge between comps
         if(nextComps.size() != 0) {
             // maxSupport is the support number of most confident nextSite
@@ -432,7 +453,7 @@ bool connect(const Components& comps, std::vector<Mole>& moleSet, std::vector<st
             [s1] -- [n2] will be removed as its maxSupport / support number = 5
             */
             for(auto nextcomp : nextComps) {
-                if(comps[i].size() / comps[nextcomp.first].size() > 9 || comps[nextcomp.first].size() / comps[i].size() > 9 || nextcomp.first == i || (maxSupport >= 5 && nextcomp.second == 1)) continue;
+                if(comps[i].size() / comps[nextcomp.first].size() > 9 || comps[nextcomp.first].size() / comps[i].size() > 9 || nextcomp.first == i || (maxSupport >= 5 && nextcomp.second == 1) || maxSupport / comps[nextcomp.first].size() > 5) continue;
                 // debug information for dot graphviz
                 std::cout << i << "--" << nextcomp.first << " [label=" << nextcomp.second << "];" << std::endl;
                 // constuct graph for longest path
@@ -472,7 +493,7 @@ bool connect(const Components& comps, std::vector<Mole>& moleSet, std::vector<st
         // exists a circle, drop out this contig
         if(spath.size() != partPreGraph.size()) {
             LOG4CXX_INFO(logger, boost::format("there is a circle in siteGraph."));
-            continue;
+            //continue;
         }
         // debug information
         std::cout << "spath: " << std::endl;
@@ -736,7 +757,7 @@ bool ContigBuilder::build(const std::string& input, const std::string& output, c
     // read mole
     LOG4CXX_WARN(logger, boost::format("alignment score threshold is %s") % minScore);
     std::vector<Mole> moleSet;
-    int reverseLabel = 0;
+    int reverseLabel = 1;
     if(boost::filesystem::exists(input)) {
         std::ifstream moleInstream(input.c_str());
         int count = -1;
