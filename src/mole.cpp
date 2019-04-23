@@ -104,6 +104,45 @@ bool MoleReader::read(Mole& mole) {
     }
     return false;
 }
+bool MoleWriter::writecmap(const Mole& mole) {
+    int startPos = 0;
+    std::vector<int> distance = mole.getData();
+    int totalLength = std::accumulate(distance.begin(), distance.end(), 0);
+    _stream << mole.getID() << "\t" << totalLength << "\t" << mole.size() + 1 << "\t1\t1\t" << startPos << "\t1.0\t1\t1\n";
+    for(size_t j = 0; j < mole.size(); ++ j) {
+        startPos += mole.getInterval(j);
+        _stream << mole.getID() << "\t" << totalLength << "\t" << mole.size() + 1 << "\t" << j + 2 << "\t1\t" << startPos << "\t1.0\t1\t1\n";
+    }
+    _stream << mole.getID() << "\t" << totalLength << "\t" << mole.size() + 1 << "\t" << mole.size() + 2 << "\t0\t" << startPos << "\t1.0\t1\t1\n";
+    return true;
+
+}
+bool MoleWriter::writebnx(const Mole& mole) {
+    int startPos = 0;
+    std::vector<int> distance = mole.getData();
+    int totalLength = std::accumulate(distance.begin(), distance.end(), 0);
+    std::cout << totalLength << std::endl;
+    std::cout << mole.getID() << std::endl;
+    _stream << "0\t" << mole.getID() << "\t" << totalLength << "\t15\t15\t" << mole.size() + 1 << "\t" << mole.getID() << "1\t-1\t" << CHIP_ID << "2\t1\t1\n";
+    _stream << "1" << "\t" << startPos << "\t";
+    for(size_t j = 0; j < mole.size() - 1; ++ j) {
+        std::cout << startPos << std::endl;
+        startPos += mole.getInterval(j);
+        _stream << startPos << "\t";
+    }
+    _stream << startPos << "\n";
+    _stream << "QX11" << "\t" << "15";
+    for(size_t j = 0; j < mole.size(); ++ j) {
+        _stream << "\t" << "15";
+    }
+    _stream << "\n";
+    _stream << "QX12" << "\t" << "0.03";
+    for(size_t j = 0; j < mole.size(); ++ j) {
+        _stream << "\t" << "0.03";
+    }
+    _stream << "\n";
+    return true;
+}
 bool AlignmentReader::read(Alignment& al) {
     if(!_stream){
         return false;

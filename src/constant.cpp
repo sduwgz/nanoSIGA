@@ -13,7 +13,7 @@ const int MAXCLUSTER = 10000;
 const int DEC = 1;
 
 //
-const int BATCH = 10000;
+const int BATCH = 1000;
 
 //Length of integral interval
 const int Interval = 100;
