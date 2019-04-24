@@ -33,6 +33,7 @@ void start(const Map* maptool, const Index* index, const std::vector<Mole>& mole
             }
         } else {
             for(int j = 0; j < moleSet.size(); ++ j) {
+                if(moleSet[i].getID()[0] == '(' && moleSet[j].getID()[0] == '(') continue;
                 Alignment align = maptool->localDPscore(moleSet[i], moleSet[j]);
                 //a hard threshold
                 if(align.getScore() < minScore || align.getScore() / align.size() < (minScore / 20)) {
