@@ -30,15 +30,15 @@ private:
     }
     int printHelps() const {
         std::cout << boost::format(
-                "nanoARCS overlap [OPTION] ... READSFILE\n"
-                "Compute pairwise overlap between all the molecule in READS\n"
+                "nanoARCS overlap [OPTION] ... READSFILE(bnx)\n"
+                "Compute pairwise overlap between all the molecule in READSFILE(bnx)\n"
                 "\n"
                 "      -h, --help                       display this help and exit\n"
                 "\n"
-                "      -t, --threads=NUM                use NUM threads to construct the index (default: 1)\n"
-                "      -m, --min-score=f                minimum aligment score required between two reads (default: 5)\n"
+                "      -t, --threads=NUM                use NUM threads to construct the index (default: 4)\n"
+                "      -m, --min-score=f                minimum aligment score required between two reads (default: 15)\n"
                 "      -S, --hash                       use hash strategy to speed up\n"
-                "      -R, --reverse                    reverse mole as a new mole\n"
+                "      -R, --reverse                    reverse every mole as a new mole\n"
                 "      -o, --prefix=PREFIX              write index to file using PREFIX instead of prefix of READSFILE\n"
                 "\n"
                 ) << std::endl;
@@ -74,7 +74,7 @@ int Overlapping::run(const Properties options, const Arguments& arg) {
     }
     if(options.find("reverse") != options.not_found()) useReverse = true;
     OverlapBuilder builder(parameter_file, output);
-    if(!builder.build(input, options.get< double >("minscore", 15.0), output, options.get< size_t >("threads", 1), 1, useReverse, useHash)) {
+    if(!builder.build(input, options.get< double >("minscore", 15.0), output, options.get< size_t >("threads", 4), 1, useReverse, useHash)) {
         LOG4CXX_ERROR(logger, boost::format("Failed to build overlap from %s MOLECULEs") % input);
         r = -1;
     }

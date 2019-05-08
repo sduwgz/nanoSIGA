@@ -626,7 +626,7 @@ std::vector<int> intervalCalling(const std::set<Vertex>& startComp, const std::s
 
     // get a center mole
     std::map<std::string, int> moleConnect;
-    int maxConnect = -1;
+    int maxConnect = -1, maxSite = 0;
     std::string centerMole;
     for(auto interval : moleInterval) {
         Vertex v1(interval.first, interval.second.first), v2(interval.first, interval.second.second);
@@ -638,6 +638,12 @@ std::vector<int> intervalCalling(const std::set<Vertex>& startComp, const std::s
         // record max connection
         if(moleConnect[interval.first] > maxConnect) {
             maxConnect = moleConnect[interval.first];
+            centerMole = interval.first;
+        }
+    }
+    for(auto interval : moleInterval) {
+        if(interval.second.second - interval.second.first > maxSite) {
+            maxSite = interval.second.second - interval.second.first;
             centerMole = interval.first;
         }
     }

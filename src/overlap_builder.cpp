@@ -51,32 +51,29 @@ void alignment(const std::string parameterFile, const std::vector<Mole>& moleSet
         index->build(moleSet);
         LOG4CXX_INFO(logger, boost::format("Hash table has been built."));
     }
+    //instantiate a DP solver
     Map* maptool = Map::instance(parameterFile);
-    //const std::vector<Mole>* moleSetPtr = &moleSet;
+    //divide moles into batch to prevent memoery overflow
     int n = moleSet.size() / BATCH + 1;
     for(int batch = 0; batch < n; ++ batch) {
         std::vector<Alignment> alignments;
         std::vector<std::vector<Alignment>> threadAlignments(threads, std::vector<Alignment>());
         boost::thread_group group;
-        LOG4CXX_INFO(logger, boost::format("Alignment using %d threads.") % threads);
         for(int i = 0; i < threads; ++ i) {
             std::vector<Alignment>* alignmentsPtr = &threadAlignments[i];
             group.create_thread(boost::bind(start, maptool, index, moleSet, alignmentsPtr, minScore, threads, i, batch));
         }
         group.join_all();
+        //collect all alignments into alignments, and output to overlap file
         for(int i = 0; i < threads; ++ i) {
             for(auto al : threadAlignments[i]) {
+                if(trim == 1) {
+                    al.trimHead();
+                }
                 alignments.push_back(al);
-            }
-        }
-        for(int i = 0; i < alignments.size(); ++ i) {
-            Alignment ret = alignments[i];
-            if(trim == 1) {
-                ret.trimHead();
-                //ret.trimTail();
-            }
-            if(ret.score > minScore) {
-                ret.print(overlapOutstream, true);
+                if(al.score > minScore) {
+                    al.print(overlapOutstream, true);
+                }
             }
         }
     }
@@ -89,6 +86,7 @@ bool OverlapBuilder::build(const std::string& input, double minScore, const std:
         MoleReader mReader(moleInstream);
         Mole m;
         while(mReader.read(m)) {
+            //40 is a threshold for chimeric 
             if(m.size() < 10 || m.size() > 40) continue;
             moleSet.push_back(m);
             if (reverseLabel) {
@@ -108,7 +106,7 @@ bool OverlapBuilder::build(const std::string& input, double minScore, const std:
         return false;
     }
     std::ofstream overlapOutstream(output.c_str());
-    //std::vector<Alignment> alignments;
+    LOG4CXX_INFO(logger, boost::format("Alignment using %d threads.") % threads);
     alignment(_parameterFile, moleSet, overlapOutstream, threads, minScore, 1, useHash);
     //TODO
     return true;
