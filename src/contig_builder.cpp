@@ -4,6 +4,7 @@
 #include <fstream>
 #include <queue>
 #include <utility>
+#include <map>
 #include <unordered_map>
 
 #include <boost/format.hpp>
@@ -16,9 +17,7 @@
 
 #include <log4cxx/logger.h>
 
-typedef std::map<Vertex, std::set<Vertex>> Graph;
 typedef std::vector<std::set<Vertex>> Components;
-typedef std::map<std::string, double> edgeSet;
 typedef std::map<int, std::set<int> > SiteGraph;
 
 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("nanoARCS.contig"));
@@ -57,7 +56,11 @@ void ContigBuilder::alignment(const std::vector<Mole>& moleSet, std::vector<Alig
 }
 
 
-void constructGraph(const std::vector<Alignment>& alignments, Graph& graph1, Graph& graph2, edgeSet& edges) {
+void ContigBuilder::constructGraph(const std::vector<Alignment>& alignments, Graph& graph1, Graph& graph2, edgeSet& edges) const {
+    //filter alignment using LSAT
+    std::map<std::string, std::vector<int>> moleAlignment;
+    
+
     //connect the sites
     for(Alignment al : alignments) {
         std::string m1 = al.mole1Id;
@@ -66,6 +69,10 @@ void constructGraph(const std::vector<Alignment>& alignments, Graph& graph1, Gra
         int s2 = al.mole2Start;
         Vertex vertex1(m1, s1);
         Vertex vertex2(m2, s2);
+        std::string edge1 = vertex1.to_string() + "-" + vertex2.to_string();
+        std::string edge2 = vertex2.to_string() + "-" + vertex1.to_string();
+
+        std::cout << edge1 << "-" << 3.6 << std::endl;
         graph1[vertex1].insert(vertex2);
         graph1[vertex2].insert(vertex1);
         if(s1 == 0 || s2 == 0) {
@@ -73,30 +80,62 @@ void constructGraph(const std::vector<Alignment>& alignments, Graph& graph1, Gra
             graph2[vertex2].insert(vertex1);
         }
         for(int i = 0; i < al.alignedMole1.size(); ++ i) {
+            Fragment f1 = al.alignedMole1[i], f2 = al.alignedMole2[i];
+            double leftScore = _maptool.validScore(f1, f2);
+            double rightScore = 0;
+            if(i !=  al.alignedMole1.size() - 1) {
+                Fragment f3 = al.alignedMole1[i + 1], f4 = al.alignedMole2[i + 1];
+                rightScore = _maptool.validScore(f3, f4);
+            }
+            double edgeScore = std::min(leftScore, rightScore);
             s1 += al.alignedMole1[i].size();
             s2 += al.alignedMole2[i].size();
+            if(edgeScore < 1.5) continue;
             vertex1.startSite = s1;
             vertex2.startSite = s2;
             graph1[vertex1].insert(vertex2);
             graph1[vertex2].insert(vertex1);
             //the score of edge is used as a threshold in construct graph.
-            std::string edge1 = vertex1.moleId + std::to_string(vertex1.startSite) + "-" + vertex2.moleId + std::to_string(vertex2.startSite);
-            std::string edge2 = vertex2.moleId + std::to_string(vertex2.startSite) + "-" + vertex1.moleId + std::to_string(vertex1.startSite);
+            std::string edge1 = vertex1.to_string() + "-" + vertex2.to_string();
+            std::string edge2 = vertex2.to_string() + "-" + vertex1.to_string();
+
+            std::cout << edge1 << "-" << edgeScore << std::endl;
+
             edges[edge1] = al.score;
             edges[edge2] = al.score;
         }
     }
 }
-void bfsSearch(const Graph& graph, edgeSet& edges, int minCluster, Components& comps) {
+void bfsSearch(Graph& graph, edgeSet& edges, int minCluster, Components& comps) {
+    //local soft adjustable threshold
+    Graph refinedGraph;
+    for(auto vertex : graph) {
+        Vertex v = vertex.first;
+        for(Vertex u : vertex.second) {
+            std::vector<Vertex> set_intersection, set_union;
+            std::set_intersection(graph[v].begin(), graph[v].end(), graph[u].begin(), graph[u].end(), std::back_inserter(set_intersection));
+            std::set_union(graph[v].begin(), graph[v].end(), graph[u].begin(), graph[u].end(), std::back_inserter(set_union));
+            //remove edges
+            if(set_intersection.size() == 2 && (graph[v].size() > 4 || graph[u].size() > 4)) {
+                continue;
+            }
+
+            if(set_intersection.size() && set_union.size() / set_intersection.size() < 4) {
+                refinedGraph[v].insert(u);
+            }
+        }
+
+    }
+    std::cout << "refine finished" << std::endl;
     //bfs visit to find all connected components.
     std::map<Vertex, int> colors;
-    for(auto it : graph) {
+    for(auto it : refinedGraph) {
         colors[it.first] = 0;
     }
     std::queue<Vertex> q;
     std::set<Vertex> comp;
     int count = 0;
-    for(auto it : graph) {
+    for(auto it : refinedGraph) {
         if(colors[it.first] != 0) continue;
         comp.clear();
         q.push(it.first);
@@ -104,7 +143,7 @@ void bfsSearch(const Graph& graph, edgeSet& edges, int minCluster, Components& c
             Vertex tmp = q.front();
             colors[tmp] = 2;
             comp.insert(tmp);
-            auto tmpAdj = graph.find(tmp);
+            auto tmpAdj = refinedGraph.find(tmp);
             q.pop();
             for(auto iv : tmpAdj->second) {
                 if(colors[iv] == 0) {
@@ -125,7 +164,7 @@ void bfsSearch(const Graph& graph, edgeSet& edges, int minCluster, Components& c
         count ++;
         LOG4CXX_DEBUG(logger, boost::format("#%d cluster, cluster size is %d.") % count % comp.size());
         //filter small comp
-        if(comp.size() < 2) continue;
+        if(comp.size() <= 2) continue;
         comps.push_back(comp);
     }
 }
@@ -235,7 +274,11 @@ void EMCalling() {
 }
 void topoSort(SiteGraph& spreGraph, SiteGraph& spostGraph, std::vector<int>& spath) {
     // get start
+    std::cout << "contig topo" << std::endl;
     for(auto site : spreGraph) {
+        for(auto nsite : site.second) {
+            std::cout << site.first << "->" << nsite << ";" << std::endl;
+        }
         if(spostGraph.find(site.first) == spostGraph.end()) {
             spath.push_back(site.first);
             for(auto nextsite : spostGraph) {
@@ -254,7 +297,14 @@ void topoSort(SiteGraph& spreGraph, SiteGraph& spostGraph, std::vector<int>& spa
             }
         }
         if(tempSite == -1 && spostGraph.size() != 0) {
+            std::cout << spath.size() << " " << spostGraph.size() << std::endl;
             LOG4CXX_INFO(logger, boost::format("there is a circle in siteGraph."));
+            for(auto site : spostGraph) {
+                if(site.second.size() != 0) {
+                    std::cout << site.first << " [style=\"filled\", fillcolor=\"red\"];" << std::endl;
+                }
+            }
+            std::cout << std::endl;
             break;
         }
         spath.push_back(tempSite);
@@ -265,14 +315,14 @@ void topoSort(SiteGraph& spreGraph, SiteGraph& spostGraph, std::vector<int>& spa
     }
 }
 
-std::vector<std::pair<int, int> > nextSites(const Components& comps, const std::set<Vertex>& curcomp, std::vector<Mole>& moleSet) {
+std::vector<std::pair<int, int> > nextSites(const Components& comps, const std::set<Vertex>& curcomp, const std::set<int>& moleComps, std::vector<Mole>& moleSet) {
     //TODO: slove wrong connection
-    int nextcomp = -1;
+    int nextcomp = 1;
     std::vector<std::pair<int, int>> res;
     std::vector<int> distances;
-    int maxOne = 0;
     int minDistance = INT_MAX;
-    for(int i = 0; i < comps.size(); ++ i) {
+    std::map<std::string, int> siteOnmole;
+    for(int i : moleComps) {
         auto comp = comps[i];
         distances.clear();
         bool label = false;
@@ -280,6 +330,8 @@ std::vector<std::pair<int, int> > nextSites(const Components& comps, const std::
             for(Vertex ps : curcomp) {
                 if(ns.moleId == ps.moleId && ns.startSite > ps.startSite) {
                     distances.push_back(ns.startSite - ps.startSite);
+                    if(siteOnmole[ps.moleId] == 0) siteOnmole[ps.moleId] = ns.startSite;
+                    else siteOnmole[ps.moleId] = std::min(siteOnmole[ps.moleId], ns.startSite);
                 }
                 // detect circle
                 if(ns.moleId == ps.moleId && ns.startSite <= ps.startSite) {
@@ -289,19 +341,18 @@ std::vector<std::pair<int, int> > nextSites(const Components& comps, const std::
             }
         }
         if(label || distances.size() == 0) continue;
-        int d = accumulate(distances.begin(), distances.end(), 0) / distances.size();
-        if(d == minDistance) {
-            res.push_back(std::make_pair(i, distances.size()));
-        } else if(d < minDistance) {
-            minDistance = d;
-            nextcomp = i;
-            res.clear();
-            res.push_back(std::make_pair(i, distances.size()));
-        }
+        res.push_back(std::make_pair(i, distances.size()));
     }
+    auto f = [&](std::pair<int, int>& a){
+        for(Vertex v : comps[a.first]) {
+            if(siteOnmole.find(v.moleId) != siteOnmole.end() && siteOnmole[v.moleId] == v.startSite) return false;
+        }
+        return true;
+    };
+    res.erase(std::remove_if(res.begin(), res.end(), f), res.end());
     //debug information
     std::unordered_map<std::string, size_t> idIndex;
-    for(size_t i = 0; i < moleSet.size(); ++ i) {
+    for(int i = 0; i < moleSet.size(); ++ i) {
         idIndex[moleSet[i].getID()] = i;
     }
     std::cout << "next comps:" << std::endl;
@@ -321,7 +372,9 @@ std::vector<std::pair<int, int> > nextSites(const Components& comps, const std::
             for(Vertex ns : comps[nextcomp]) {
                 for(Vertex ps : curcomp) {
                     if(ns.moleId == ps.moleId) {
-                        std::cout << ps.to_string() << " " << ns.to_string() << std::endl;
+                        for(int ss = ps.startSite; ss < ns.startSite; ++ ss) {
+                            std::cout << ps.to_string() << " " << ns.to_string() << " " << moleSet[idIndex[ps.moleId]].getInterval(ss) << std::endl;
+                        }
                         distance.push_back(moleSet[idIndex[ps.moleId]].getInterval(ps.startSite));
                     }
                 }
@@ -370,26 +423,37 @@ void component(const SiteGraph& sgraph, std::vector<std::set<int>>& parts) {
 bool connect(const Components& comps, std::vector<Mole>& moleSet, std::vector<std::vector<int>>& contigs) {
     //construct contig graph
     SiteGraph sGraph, spreGraph, spostGraph;
+    std::map<std::string, std::vector<int>> moleInComps;
+    for(int i = 0; i < comps.size(); ++ i) {
+        for(Vertex v : comps[i]) {
+            moleInComps[v.moleId].push_back(i);
+        }
+    }
     std::vector<int> contig;
     for(int i = 0; i < comps.size(); ++ i) {
         auto curcomp = comps[i];
-        std::cout << i << std::endl;
-        auto nextComps = nextSites(comps, curcomp, moleSet);
+        std::set<int> moleComps;
+        for(Vertex v : curcomp) {
+            moleComps.insert(moleInComps[v.moleId].begin(), moleInComps[v.moleId].end());
+        }
+        auto nextComps = nextSites(comps, curcomp, moleComps, moleSet);
         // add a edge between comps
         if(nextComps.size() != 0) {
             // maxSupport is the support number of most confident nextSite
             int maxSupport = std::max_element(nextComps.begin(), nextComps.end(), [](const std::pair<int, int>& a, const std::pair<int, int>& b){return a.second < b.second;})->second;
-            // an edge filter
-            //
-            //       [s1]
-            //       /  \
-            //     5/    \1
-            //     /      \
-            //  [n1]      n[2]
-            //
-            // [s1] -- [n2] will be removed as its support number is 1
+            /*
+            an edge filter
+            
+                   [s1]
+                   /  \
+                 5/    \1
+                 /      \
+              [n1]      [n2]
+            
+            [s1] -- [n2] will be removed as its maxSupport / support number = 5
+            */
             for(auto nextcomp : nextComps) {
-                if(nextcomp.first == i || (maxSupport >= 5 && nextcomp.second == 1)) continue;
+                if(comps[i].size() / comps[nextcomp.first].size() > 9 || comps[nextcomp.first].size() / comps[i].size() > 9 || nextcomp.first == i || (maxSupport >= 5 && nextcomp.second == 1) || maxSupport / comps[nextcomp.first].size() > 5) continue;
                 // debug information for dot graphviz
                 std::cout << i << "--" << nextcomp.first << " [label=" << nextcomp.second << "];" << std::endl;
                 // constuct graph for longest path
@@ -429,7 +493,7 @@ bool connect(const Components& comps, std::vector<Mole>& moleSet, std::vector<st
         // exists a circle, drop out this contig
         if(spath.size() != partPreGraph.size()) {
             LOG4CXX_INFO(logger, boost::format("there is a circle in siteGraph."));
-            continue;
+            //continue;
         }
         // debug information
         std::cout << "spath: " << std::endl;
@@ -503,6 +567,8 @@ int calcDistance(std::vector<int> distance) {
      * claculate the interval length
      */
     int tempDis = 0;
+    if(distance.size() == 1)
+        tempDis = distance[0];
     if(distance.size() == 2)
         // just return average of them
         tempDis = std::accumulate(distance.begin(), distance.end(), 0.0) / distance.size();
@@ -541,6 +607,7 @@ int calcDistance(std::vector<int> distance) {
         // cluster average
         tempDis = std::accumulate(distance.begin() + maxIndex, distance.begin() + maxIndex + maxCluster, 0.0) / (maxCluster);
     }
+    std::cout << tempDis << std::endl;
     return tempDis;
 }
 
@@ -559,19 +626,24 @@ std::vector<int> intervalCalling(const std::set<Vertex>& startComp, const std::s
 
     // get a center mole
     std::map<std::string, int> moleConnect;
-    int maxConnect = -1;
+    int maxConnect = -1, maxSite = 0;
     std::string centerMole;
     for(auto interval : moleInterval) {
-        if(interval.second.second == -1) continue;
-        for(int i = interval.second.first; i <= interval.second.second; ++ i) {
-            Vertex v(interval.first, i);
-            auto it = graph.find(v);
-            if(it == graph.end()) continue;
-            moleConnect[interval.first] += it->second.size();
+        Vertex v1(interval.first, interval.second.first), v2(interval.first, interval.second.second);
+        auto it1 = graph.find(v1), it2 = graph.find(v2);
+        if(it1 != graph.end() && it2 != graph.end()) {
+            moleConnect[interval.first] += it1->second.size();
+            moleConnect[interval.first] += it2->second.size();
         }
         // record max connection
         if(moleConnect[interval.first] > maxConnect) {
             maxConnect = moleConnect[interval.first];
+            centerMole = interval.first;
+        }
+    }
+    for(auto interval : moleInterval) {
+        if(interval.second.second - interval.second.first > maxSite) {
+            maxSite = interval.second.second - interval.second.first;
             centerMole = interval.first;
         }
     }
@@ -586,14 +658,20 @@ std::vector<int> intervalCalling(const std::set<Vertex>& startComp, const std::s
     // TODO: handle deletion in center mole
     std::vector<int> contig;
     auto preComp = startComp;
+    std::cout << "centerMole" << centerMole << std::endl;
     for(int i = moleInterval[centerMole].first; i < moleInterval[centerMole].second; ++ i) {
         auto nextSite = Vertex(centerMole, i + 1);
+        std::cout << nextSite.to_string() << std::endl;
         auto it = graph.find(nextSite);
         if(it == graph.end()) continue;
         auto nextComp = it->second;
         nextComp.insert(nextSite);
-        if(nextComp.size() <= startComp.size() / 5) continue;
-        LOG4CXX_DEBUG(logger, boost::format("%s is a insertion.") % nextSite.to_string());
+        /*
+        if(nextComp.size() <= startComp.size() / 5) {
+            LOG4CXX_DEBUG(logger, boost::format("%s is a insertion.") % nextSite.to_string());
+            continue;
+        }
+        */
         // handle insertion
         std::vector<int> moleSites;
         std::vector<int> distances;
@@ -609,7 +687,12 @@ std::vector<int> intervalCalling(const std::set<Vertex>& startComp, const std::s
                 }
             }
         }
+        for(auto d : distances) {
+            std::cout << d << " ";
+        }
         contig.push_back(calcDistance(distances));
+        std::cout << contig.back() << std::endl;
+        preComp = nextComp;
     }
     // debug information
     for(auto pv : startComp) {
@@ -624,7 +707,7 @@ std::vector<int> intervalCalling(const std::set<Vertex>& startComp, const std::s
     for(int i = 0; i < contig.size(); ++ i) {
         std::cout << contig[i] << " ";
     }
-    std::cout << std::endl;
+    std::cout << "contig" << std::endl;
     return contig;
 }
 
@@ -632,7 +715,9 @@ void outputBNX(const std::vector<std::vector<int>>& contigs, const std::string& 
     std::ofstream os(output.c_str());
     for(size_t i = 0; i < contigs.size(); ++ i) {
         int startPos = 0;
-        os << 0 << "\t" << i << "\n" << 1 << "\t" << startPos << "\t";
+        int totalLength = std::accumulate(contigs[i].begin(), contigs[i].end(), 0);
+        os << "0" << "\t" << i << "\t" << totalLength << "\t" << "15" << "\t" << "15" << "\t" << contigs[i].size() + 1 << "\t" << i << "1" << "\t" << "-1" << "\t" << CHIP_ID << "2" << "\t" << "1" << "\t" << "1" << "\n";
+        os << "1" << "\t" << startPos << "\t";
         for(size_t j = 0; j < contigs[i].size(); ++ j) {
             startPos += contigs[i][j];
             os << startPos << "\t";
@@ -651,12 +736,34 @@ void outputBNX(const std::vector<std::vector<int>>& contigs, const std::string& 
     }
     os.close();
 }
+void outputCMP(const std::vector<std::vector<int>>& contigs, const std::string& output) {
+    std::ofstream os(output.c_str());
+    os << CMP_HEADER;
+    for(size_t i = 0; i < contigs.size(); ++ i) {
+        int startPos = 0;
+        int totalLength = std::accumulate(contigs[i].begin(), contigs[i].end(), 0);
+        os << i + 1 << "\t" << totalLength << "\t" << contigs[i].size() + 1 << "\t" << 1 << "\t" << "1" << "\t" << startPos << "\t" << "1.0" << "\t" << "1" << "\t" << "1" << "\n";
+        for(size_t j = 0; j < contigs[i].size(); ++ j) {
+            startPos += contigs[i][j];
+            os << i + 1 << "\t" << totalLength << "\t" << contigs[i].size() + 1 << "\t" << j + 2 << "\t" << "1" << "\t" << startPos << "\t" << "1.0" << "\t" << "1" << "\t" << "1" << "\n";
+        }
+        os << i + 1 << "\t" << totalLength << "\t" << contigs[i].size() + 1 << "\t" << contigs[i].size() + 2 << "\t" << "0" << "\t" << startPos << "\t" << "1.0" << "\t" << "1" << "\t" << "1" << "\n";
+    }
+    os.close();
+}
+void outputContig(const std::vector<std::vector<int>>& contigs, const std::string& output) {
+    std::string bnxFile = output + ".bnx";
+    outputBNX(contigs, bnxFile);
+    std::string cmpFile = output + ".cmap";
+    outputCMP(contigs, cmpFile);
+}
 
 bool ContigBuilder::build(const std::string& input, const std::string& output, const std::string& alignmentFile, double minScore, int threads) const {
 
     // read mole
+    LOG4CXX_WARN(logger, boost::format("alignment score threshold is %s") % minScore);
     std::vector<Mole> moleSet;
-    int reverseLabel = 0;
+    int reverseLabel = 1;
     if(boost::filesystem::exists(input)) {
         std::ifstream moleInstream(input.c_str());
         int count = -1;
@@ -680,6 +787,7 @@ bool ContigBuilder::build(const std::string& input, const std::string& output, c
         MoleReader mReader(moleInstream);
         Mole m;
         while(mReader.read(m)) {
+            if(m.size() < 10) continue;
             moleSet.push_back(m);
             if (reverseLabel == 1) {
                 Mole reMole = m.reverseMole();
@@ -691,7 +799,7 @@ bool ContigBuilder::build(const std::string& input, const std::string& output, c
             LOG4CXX_WARN(logger, "no mole is in moleSet");
             return false;
         } else {
-            LOG4CXX_INFO(logger, boost::format("%s moles have been inited.") % moleNumber);
+            LOG4CXX_WARN(logger, boost::format("%s moles have been inited.") % moleNumber);
         } 
     }
 
@@ -704,7 +812,6 @@ bool ContigBuilder::build(const std::string& input, const std::string& output, c
         while(aReader.read(al)) {
             if(al.getScore() < minScore || al.getScore() / al.size() < minScore / 20) continue;
             alignments.push_back(al);
-            al.print(std::cout, true);
         }
         int alignmentNumber = alignments.size();
         if (alignmentNumber == 0) {
@@ -721,11 +828,21 @@ bool ContigBuilder::build(const std::string& input, const std::string& output, c
     // construct graph, g1 for connect, g2 for cluster
     Graph g1, g2;
     edgeSet edges;
+    std::cout << "construct graph" << std::endl;
     constructGraph(alignments, g1, g2, edges);
+    std::cout << "construct graph" << std::endl;
     
     // bfs to cluster
     Components comps;
-    bfsSearch(g2, edges, 2, comps);
+    bfsSearch(g1, edges, 2, comps);
+    std::cout << "bfs result:" << std::endl;
+    for(auto cp : comps) {
+        for(Vertex ns : cp) {
+            std::cout << ns.moleId << "|" << ns.startSite << ",";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "bfs result" << std::endl;
 
     // divide
     Components dividedComponents;
@@ -739,12 +856,14 @@ bool ContigBuilder::build(const std::string& input, const std::string& output, c
         }
     }
     // debug information
+    std::cout << "comps result:" << std::endl;
     for(auto cp : dividedComponents) {
         for(Vertex ns : cp) {
             std::cout << ns.moleId << "|" << ns.startSite << ",";
         }
         std::cout << std::endl;
     }
+    std::cout << "comps result" << std::endl;
 
     // contiging
     std::vector<std::vector<int>> siteContigs;
@@ -759,7 +878,9 @@ bool ContigBuilder::build(const std::string& input, const std::string& output, c
             auto intervals = intervalCalling(dividedComponents[siteContigs[i][j]], dividedComponents[siteContigs[i][j + 1]], g1, moleSet);
             for(int k : intervals) contig.push_back(k);
         }
-        contigs.push_back(contig);
+        if(contig.size() >= 20)
+            contigs.push_back(contig);
     }
-    outputBNX(contigs, output);
+    outputContig(contigs, output);
+    return true;
 }

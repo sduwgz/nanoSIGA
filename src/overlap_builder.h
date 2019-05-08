@@ -10,7 +10,7 @@ class OverlapBuilder {
 public:
     OverlapBuilder(const std::string& parameterFile, const std::string& prefix="default") : _parameterFile(parameterFile), _prefix(prefix) {
     }
-    bool build(const std::string& input, double minScore, const std::string& output, size_t threads=1, int trim=1, int reverseLabel=0) const;
+    bool build(const std::string& input, double minScore, const std::string& output, size_t threads=1, int trim=1, bool reverseLabel=false, bool useHash=false) const;
 private:
     std::string _parameterFile;
     std::string _prefix;

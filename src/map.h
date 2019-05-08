@@ -30,10 +30,10 @@ public:
 
     double wholeDPscore(const std::vector<int>& d1, const std::vector<int>& d2) const;
     Alignment localDPscore(const Mole& m1, const Mole& m2) const;
+    double validScore(const Fragment& moleFragment, const Fragment& geneFragment) const;
 private:
     bool initParameters(const std::string& parameter_file);
     void initPunishScore();
-    double validScore(const Fragment& moleFragment, const Fragment& geneFragment) const;
 
     double probLaplace(int delta) const;
     double probDeletion(int siteNumber, int moleLength) const;

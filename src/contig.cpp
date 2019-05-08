@@ -22,7 +22,7 @@ class Contigging : public Runner {
 public:
     virtual int run(const Properties options, const Arguments& arg);
 private:
-    Contigging() : Runner("a:f:o:t:p:A:", boost::assign::map_list_of('a', "algorithm")('f', "correctedfile")('o', "prefix")('t', "threads")('p', "parameter")('A', "alignment")) {
+    Contigging() : Runner("a:m:f:o:t:p:A:", boost::assign::map_list_of('a', "algorithm")('m', "minscore")('f', "correctedfile")('o', "prefix")('t', "threads")('p', "parameter")('A', "alignment")) {
         RunnerManager::instance()->install("contig", this);
     }
     int checkOptions(const Properties options, const Arguments& args) const {
@@ -40,7 +40,8 @@ private:
                 "      -h, --help                       display this help and exit\n"
                 "\n"
                 "      -a, --algorithm=A                use A correct function (default: vote)\n"
-                "      -f, --overlapfile=file           input file\n"
+                "      -A, --overlapfile=file           input file\n"
+                "      -m, --minscore=m                 min score for alignments\n"
                 "      -t, --threads=NUM                use NUM threads to construct the index (default: 1)\n"
                 "      -o, --prefix=PREFIX              write index to file using PREFIX instead of prefix of READSFILE\n"
                 "\n"

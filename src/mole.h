@@ -1,6 +1,6 @@
 #ifndef mole_h_
 #define mole_h_
-
+#include "constant.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -85,6 +85,10 @@ public:
     std::vector<int> getData() const {
        return _distance;
     } 
+    void setData(const std::vector<int>& newData) {
+        _distance.clear();
+        _distance.assign(newData.begin(), newData.end());
+    } 
     std::string getID() const {
        return _id;
     } 
@@ -92,7 +96,7 @@ public:
        _id = s;
     } 
     size_t size() const {
-        return _position.size();
+        return _distance.size();
     }
     int getInterval(const int index) const {
         if(index > _distance.size()) return 0;
@@ -120,5 +124,13 @@ public:
 
 private:
     std::istream& _stream;
+};
+class MoleWriter {
+public:
+    MoleWriter(std::ostream& stream) : _stream(stream) {};
+    bool writebnx(const Mole& mole);
+    bool writecmap(const Mole& mole);
+private:
+    std::ostream& _stream;
 };
 #endif //mole_h_
