@@ -23,6 +23,9 @@ INCLUDE_DIRECTORIES(/usr/include/)
         ./src/contig_builder.h
         ./src/contig_builder.cpp
         ./src/contig.cpp
+        ./src/refine_builder.h
+        ./src/refine_builder.cpp
+        ./src/refine.cpp
         ./src/runner.h
        )
 
