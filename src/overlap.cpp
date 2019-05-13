@@ -38,8 +38,8 @@ private:
                 "      -t, --threads=NUM                use NUM threads to construct the index (default: 4)\n"
                 "      -m, --min-score=f                minimum aligment score required between two reads (default: 15)\n"
                 "      -S, --hash                       use hash strategy to speed up\n"
-                "      -R, --reverse                    reverse every mole as a new mole\n"
-                "      -o, --prefix=PREFIX              write index to file using PREFIX instead of prefix of READSFILE\n"
+                "      -R, --reverse                    reverse every mole as a new mole(not recommend for assembly)\n"
+                "      -o, --prefix=PREFIX              write result to file using PREFIX instead of prefix of READSFILE\n"
                 "\n"
                 ) << std::endl;
         return 256;
@@ -75,8 +75,9 @@ int Overlapping::run(const Properties options, const Arguments& arg) {
     if(options.find("reverse") != options.not_found()) useReverse = true;
     OverlapBuilder builder(parameter_file, output);
     if(!builder.build(input, options.get< double >("minscore", 15.0), output, options.get< size_t >("threads", 4), 1, useReverse, useHash)) {
-        LOG4CXX_ERROR(logger, boost::format("Failed to build overlap from %s MOLECULEs") % input);
+        LOG4CXX_ERROR(logger, boost::format("Fail to build overlap from %s MOLECULEs") % input);
         r = -1;
     }
+    LOG4CXX_INFO(logger, boost::format("Success to build overlap from %s MOLECULEs") % input);
     return r;
 }
