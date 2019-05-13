@@ -14,12 +14,6 @@ INCLUDE_DIRECTORIES(/usr/include/)
         ./src/overlap_builder.h
         ./src/overlap_builder.cpp
         ./src/overlap.cpp
-        ./src/cluster_builder.h
-        ./src/cluster_builder.cpp
-        ./src/cluster.cpp
-        ./src/correct_builder.h
-        ./src/correct_builder.cpp
-        ./src/correct.cpp
         ./src/contig_builder.h
         ./src/contig_builder.cpp
         ./src/contig.cpp
