@@ -33,3 +33,6 @@ const int MAX_DELETION = 20;
 const std::string CHIP_ID = "20245,11541,3/19/2013,0009155";
 //Cmp header
 const std::string CMP_HEADER = "# CMAP File Version:    0.1\n# Label Channels:   1\n# Nickase Recognition Site 1:   GCTCTTC\n# Enzyme1:  Nt.BspQI\n# Number of Consensus Nanomaps: 1\n#h CMapId   ContigLength    NumSites    SiteID  LabelChannel    Position    StdDev  Coverage    Occurrence\n#f int  float   int int int float   float   int int\n";
+
+//k-gram
+const int K = 3;

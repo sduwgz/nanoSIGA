@@ -32,5 +32,8 @@ extern const int MAX_DELETION;
 //Chip id
 extern const std::string CHIP_ID;
 extern const std::string CMP_HEADER;
+
+//k-gram
+extern const int K;
 #endif //constant_h_
 
