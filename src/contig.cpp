@@ -39,9 +39,8 @@ private:
                 "\n"
                 "      -h, --help                       display this help and exit\n"
                 "\n"
-                "      -a, --algorithm=A                use A correct function (default: vote)\n"
                 "      -A, --overlapfile=file           input file\n"
-                "      -m, --minscore=m                 min score for alignments\n"
+                "      -m, --minscore=m                 minimum score for alignments\n"
                 "      -t, --threads=NUM                use NUM threads to construct the index (default: 1)\n"
                 "      -o, --prefix=PREFIX              write index to file using PREFIX instead of prefix of READSFILE\n"
                 "\n"
@@ -57,7 +56,7 @@ int Contigging::run(const Properties options, const Arguments& args) {
         return r;
     }
     std::string input = args[0];
-    LOG4CXX_INFO(logger, boost::format("input file is: %s") % input);
+    LOG4CXX_INFO(logger, boost::format("Input file is: %s") % input);
     std::string output = boost::filesystem::path(input).stem().string() + ".out";
     std::string alignmentFile = "";
     if(options.find("prefix") != options.not_found()) {
@@ -74,7 +73,7 @@ int Contigging::run(const Properties options, const Arguments& args) {
     Map maptool(parameter_file);
     ContigBuilder builder(maptool, output);
     if(!builder.build(input, output, alignmentFile, options.get< double > ("minscore", 25.0), options.get< size_t> ("threads", 1))) {
-        LOG4CXX_ERROR(logger, boost::format("Fail to build contig from %s corrected centers") % input);
+        LOG4CXX_ERROR(logger, boost::format("Fail to build contig from %s") % alignmentFile);
         r = -1;
     }
     return r;

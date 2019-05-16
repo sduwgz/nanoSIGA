@@ -19,48 +19,13 @@
 
 typedef std::vector<std::set<Vertex>> Components;
 typedef std::map<int, std::set<int> > SiteGraph;
+typedef std::vector<int> Contig;
 
 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("nanoARCS.contig"));
-void ContigBuilder::start(const std::vector<Mole>* moleSetPtr, std::vector<Alignment>* alignmentsPtr, double minScore, int threads, int threadId) const {
-    const std::vector<Mole>& moleSet = *moleSetPtr;
-    std::vector<Alignment>& alignments = *alignmentsPtr;
-    for(int i = threadId; i < moleSet.size(); i += threads) {
-        for(int j = i + 1; j < moleSet.size(); ++ j) {
-            Alignment align = _maptool.localDPscore(moleSet[i], moleSet[j]);
-            //a hard threshold
-            if(align.getScore() < minScore || align.getScore() / align.size() < (minScore / 20)) {
-                continue;
-            }
-            alignments.push_back(align);
-        }
-    }
-}
-void ContigBuilder::alignment(const std::vector<Mole>& moleSet, std::vector<Alignment>& alignments, int threads, double minScore) const {
-    const std::vector<Mole>* moleSetPtr = &moleSet;
-    std::vector<std::vector<Alignment>> threadAlignments(threads, std::vector<Alignment>());
-    boost::thread_group group;
-    LOG4CXX_INFO(logger, boost::format("Alignment using %d threads.") % threads);
-    for(int i = 0; i < threads; ++ i) {
-        std::vector<Alignment>* alignmentsPtr = &threadAlignments[i];
-        group.create_thread(boost::bind(&ContigBuilder::start, this, moleSetPtr, alignmentsPtr, minScore, threads, i));
-    }
-    group.join_all();
-    for(int i = 0; i < threads; ++ i) {
-        for(auto &al : threadAlignments[i]) {
-            al.trimHead();
-            al.trimTail();
-            alignments.push_back(al);
-            al.print(std::cout, true);
-        }
-    }
-}
-
 
 void ContigBuilder::constructGraph(const std::vector<Alignment>& alignments, Graph& graph1, Graph& graph2, edgeSet& edges) const {
     //filter alignment using LSAT
     std::map<std::string, std::vector<int>> moleAlignment;
-    
-
     //connect the sites
     for(Alignment al : alignments) {
         std::string m1 = al.mole1Id;
@@ -716,22 +681,20 @@ void outputBNX(const std::vector<std::vector<int>>& contigs, const std::string& 
     for(size_t i = 0; i < contigs.size(); ++ i) {
         int startPos = 0;
         int totalLength = std::accumulate(contigs[i].begin(), contigs[i].end(), 0);
-        os << "0" << "\t" << i << "\t" << totalLength << "\t" << "15" << "\t" << "15" << "\t" << contigs[i].size() + 1 << "\t" << i << "1" << "\t" << "-1" << "\t" << CHIP_ID << "2" << "\t" << "1" << "\t" << "1" << "\n";
-        os << "1" << "\t" << startPos << "\t";
+        os << boost::format("0\t%d\t%d\t15\t15\t%d\t%d1\t-1\t%s2\t1\t1\n") % i % totalLength % (contigs[i].size() + 1) % i % CHIP_ID;
+        os << boost::format("1\t%d\t") % startPos;
         for(size_t j = 0; j < contigs[i].size(); ++ j) {
             startPos += contigs[i][j];
-            os << startPos << "\t";
+            os << boost::format("%d\t") % startPos;
         }
-        os << startPos << "\n";
-        os << "QX11" << "\t" << "15";
-        for(size_t j = 0; j < contigs[i].size(); ++ j) {
-            os << "\t" << "15";
-        }
+        os << boost::format("%d\n") % startPos;
+        std::vector<std::string> qx11(contigs[i].size() + 1, "15");
+        os << "QX11\t";
+        os << boost::join(qx11, "\t");
         os << "\n";
-        os << "QX12" << "\t" << "0.03";
-        for(size_t j = 0; j < contigs[i].size(); ++ j) {
-            os << "\t" << "0.03";
-        }
+        std::vector<std::string> qx12(contigs[i].size() + 1, "0.03");
+        os << "QX12\t";
+        os << boost::join(qx12, "\t");
         os << "\n";
     }
     os.close();
@@ -742,12 +705,13 @@ void outputCMP(const std::vector<std::vector<int>>& contigs, const std::string& 
     for(size_t i = 0; i < contigs.size(); ++ i) {
         int startPos = 0;
         int totalLength = std::accumulate(contigs[i].begin(), contigs[i].end(), 0);
-        os << i + 1 << "\t" << totalLength << "\t" << contigs[i].size() + 1 << "\t" << 1 << "\t" << "1" << "\t" << startPos << "\t" << "1.0" << "\t" << "1" << "\t" << "1" << "\n";
+        os << boost::format("%d\t%d\t%d\t1\t1\t%d\t1.0\t1\t1\n") % (i + 1) % totalLength % (contigs[i].size() + 1) % startPos;
         for(size_t j = 0; j < contigs[i].size(); ++ j) {
             startPos += contigs[i][j];
-            os << i + 1 << "\t" << totalLength << "\t" << contigs[i].size() + 1 << "\t" << j + 2 << "\t" << "1" << "\t" << startPos << "\t" << "1.0" << "\t" << "1" << "\t" << "1" << "\n";
+            os << boost::format("%d\t%d\t%d\t%d\t1\t%d\t1.0\t1\t1\n") % (i + 1) % totalLength % (contigs[i].size() + 1) % (j + 2) % startPos;
+ 
         }
-        os << i + 1 << "\t" << totalLength << "\t" << contigs[i].size() + 1 << "\t" << contigs[i].size() + 2 << "\t" << "0" << "\t" << startPos << "\t" << "1.0" << "\t" << "1" << "\t" << "1" << "\n";
+        os << boost::format("%d\t%d\t%d\t%d\t0\t%d\t1.0\t1\t1\n") % (i + 1) % totalLength % (contigs[i].size() + 1) % (contigs[i].size() + 2) % startPos;
     }
     os.close();
 }
@@ -757,33 +721,21 @@ void outputContig(const std::vector<std::vector<int>>& contigs, const std::strin
     std::string cmpFile = output + ".cmap";
     outputCMP(contigs, cmpFile);
 }
-
-bool ContigBuilder::build(const std::string& input, const std::string& output, const std::string& alignmentFile, double minScore, int threads) const {
-
-    // read mole
-    LOG4CXX_WARN(logger, boost::format("alignment score threshold is %s") % minScore);
-    std::vector<Mole> moleSet;
-    int reverseLabel = 1;
+void outputGroup(const Components& siteGroups, const std::string& output) {
+    std::string groupOutput = output + "_site_group.out";
+    std::ofstream gos(groupOutput.c_str());
+    gos << " Site group:\n";
+    for(auto cp : siteGroups) {
+        for(Vertex ns : cp) {
+            gos << boost::format("%s|%s,") % ns.moleId % ns.startSite;
+        }
+        gos << "\n";
+    }
+    gos.close();
+}
+bool readMole(const std::string input, int reverseLabel, std::vector<Mole>& moleSet) {
     if(boost::filesystem::exists(input)) {
         std::ifstream moleInstream(input.c_str());
-        int count = -1;
-        /* 
-        std::string line;
-        while(std::getline(moleInstream, line)) {
-            count ++;
-            std::string lineName = std::to_string(count);
-            std::getline(moleInstream, line);
-            boost::trim(line);
-            std::vector<std::string> lineSplit;
-            boost::split(lineSplit, line, boost::is_any_of(" \t"), boost::token_compress_on);
-            std::vector<int> tempMole;
-            BOOST_FOREACH(std::string interval, lineSplit) {
-                tempMole.push_back(boost::lexical_cast< int > (interval));
-            }
-            Mole m(lineName, tempMole);
-            moleSet.push_back(m);
-        }
-        */
         MoleReader mReader(moleInstream);
         Mole m;
         while(mReader.read(m)) {
@@ -794,17 +746,17 @@ bool ContigBuilder::build(const std::string& input, const std::string& output, c
                 moleSet.push_back(reMole);
             }
         }
-        int moleNumber = moleSet.size();
-        if (moleNumber == 0) {
-            LOG4CXX_WARN(logger, "no mole is in moleSet");
+        if (moleSet.size() == 0) {
+            LOG4CXX_WARN(logger, boost::format("No mole in %s") % input);
             return false;
         } else {
-            LOG4CXX_WARN(logger, boost::format("%s moles have been inited.") % moleNumber);
+            LOG4CXX_INFO(logger, boost::format("%s moles have been inited.") % moleSet.size());
         } 
+        moleInstream.close();
     }
-
-    // read alignment
-    std::vector<Alignment> alignments;
+    return true;
+}
+bool readAlignment(const std::string alignmentFile, float minScore, std::vector<Alignment>& alignments) {
     if(boost::filesystem::exists(alignmentFile)) {
         std::ifstream alignInstream(alignmentFile.c_str());
         AlignmentReader aReader(alignInstream);
@@ -813,69 +765,62 @@ bool ContigBuilder::build(const std::string& input, const std::string& output, c
             if(al.getScore() < minScore || al.getScore() / al.size() < minScore / 20) continue;
             alignments.push_back(al);
         }
-        int alignmentNumber = alignments.size();
-        if (alignmentNumber == 0) {
-            LOG4CXX_WARN(logger, "no alignment is in alignmentFile");
+        if (alignments.size() == 0) {
+            LOG4CXX_WARN(logger, boost::format("No alignment in %s") % alignmentFile);
             return false;
         } else {
-            LOG4CXX_INFO(logger, boost::format("%s alignments have been inited.") % alignmentNumber);
+            LOG4CXX_INFO(logger, boost::format("%s alignments have been inited.") % alignments.size());
         } 
+        alignInstream.close();
     } else {
         // no alignment file
-        alignment(moleSet, alignments, threads, minScore);
+        LOG4CXX_WARN(logger, boost::format("%s is not exist.") % alignmentFile);
+        return false;
     }
+    return true;
+}
 
+bool ContigBuilder::build(const std::string& input, const std::string& output, const std::string& alignmentFile, double minScore, int threads) const {
+    // read moleculars
+    std::vector<Mole> moleSet;
+    if(!readMole(input, 0, moleSet)) return false;
+    // read alignments
+    std::vector<Alignment> alignments;
+    if(!readAlignment(alignmentFile, minScore, alignments)) return false;
     // construct graph, g1 for connect, g2 for cluster
     Graph g1, g2;
     edgeSet edges;
-    std::cout << "construct graph" << std::endl;
+    LOG4CXX_INFO(logger, "Begin construct graph for site grouping");
     constructGraph(alignments, g1, g2, edges);
-    std::cout << "construct graph" << std::endl;
     
-    // bfs to cluster
-    Components comps;
-    bfsSearch(g1, edges, 2, comps);
-    std::cout << "bfs result:" << std::endl;
-    for(auto cp : comps) {
-        for(Vertex ns : cp) {
-            std::cout << ns.moleId << "|" << ns.startSite << ",";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "bfs result" << std::endl;
+    // bfs for component
+    Components components;
+    bfsSearch(g1, edges, 2, components);
+    LOG4CXX_INFO(logger, boost::format("There are %d components in site corresponding graph.") % components.size());
 
-    // divide
-    Components dividedComponents;
-    Components tempComp;
-    for(auto comp : comps) {
-        tempComp.clear();
-        divide2(comp, g1, tempComp);
-        LOG4CXX_DEBUG(logger, boost::format("divide into %d components.") % tempComp.size());
-        for(auto cp : tempComp) {
-            dividedComponents.push_back(cp);
+    // solve group conflict
+    Components siteGroups, dividedGroup;
+    for(auto comp : components) {
+        dividedGroup.clear();
+        divide2(comp, g1, dividedGroup);
+        LOG4CXX_DEBUG(logger, boost::format("Divide into %d components.") % dividedGroup.size());
+        for(auto cp : dividedGroup) {
+            siteGroups.push_back(cp);
         }
     }
-    // debug information
-    std::cout << "comps result:" << std::endl;
-    for(auto cp : dividedComponents) {
-        for(Vertex ns : cp) {
-            std::cout << ns.moleId << "|" << ns.startSite << ",";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "comps result" << std::endl;
-
+    LOG4CXX_INFO(logger, boost::format("There are %d site groups.") % siteGroups.size());
+    outputGroup(siteGroups, output);
     // contiging
-    std::vector<std::vector<int>> siteContigs;
-    connect(dividedComponents, moleSet, siteContigs);
-    LOG4CXX_DEBUG(logger, boost::format("there are %d contigs.") % siteContigs.size());
+    std::vector<Contig> contigSet;
+    connect(siteGroups, moleSet, contigSet);
+    LOG4CXX_INFO(logger, boost::format("There are %d contigs.") % contigSet.size());
     
-    // interval call
-    std::vector<std::vector<int>> contigs;
-    for(int i = 0; i < siteContigs.size(); ++ i) {
-        std::vector<int> contig;
-        for(int j = 0; j < siteContigs[i].size() - 1; ++ j) {
-            auto intervals = intervalCalling(dividedComponents[siteContigs[i][j]], dividedComponents[siteContigs[i][j + 1]], g1, moleSet);
+    // interval calling
+    std::vector<Contig> contigs;
+    for(int i = 0; i < contigSet.size(); ++ i) {
+        Contig contig;
+        for(int j = 0; j < contigSet[i].size() - 1; ++ j) {
+            auto intervals = intervalCalling(siteGroups[contigSet[i][j]], siteGroups[contigSet[i][j + 1]], g1, moleSet);
             for(int k : intervals) contig.push_back(k);
         }
         if(contig.size() >= 20)
